@@ -16,8 +16,8 @@ pub mod config;
 pub mod money;
 #[cfg(feature = "report")]
 pub mod report;
-// #[cfg(feature = "tui")]
-// pub mod tui;
+#[cfg(feature = "tui")]
+pub mod tui;
 
 /// A size for a person to read in a one-line message: whole KiB, rounded up
 /// so a small file never reads as `0 KiB`, and whole MiB from one up.
