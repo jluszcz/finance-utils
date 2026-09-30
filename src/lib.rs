@@ -8,8 +8,8 @@
 
 #![warn(missing_docs)]
 
-// #[cfg(feature = "backup")]
-// pub mod backup;
+#[cfg(feature = "backup")]
+pub mod backup;
 #[cfg(feature = "config")]
 pub mod config;
 #[cfg(feature = "money")]
