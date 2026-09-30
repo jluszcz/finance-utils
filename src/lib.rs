@@ -10,8 +10,8 @@
 
 // #[cfg(feature = "backup")]
 // pub mod backup;
-// #[cfg(feature = "config")]
-// pub mod config;
+#[cfg(feature = "config")]
+pub mod config;
 #[cfg(feature = "money")]
 pub mod money;
 // #[cfg(feature = "report")]
