@@ -14,8 +14,8 @@
 pub mod config;
 #[cfg(feature = "money")]
 pub mod money;
-// #[cfg(feature = "report")]
-// pub mod report;
+#[cfg(feature = "report")]
+pub mod report;
 // #[cfg(feature = "tui")]
 // pub mod tui;
 
