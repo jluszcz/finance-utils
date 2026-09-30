@@ -33,8 +33,8 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 - `rusqlite` is never a dependency: the applications own their databases, and `backup` takes the
   snapshot as a closure.
 - `minify_html` is named only in `src/report.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
-  and `tokio` only in `src/backup/s3.rs`; `serde` and `toml` only in `src/config.rs` and
-  `src/backup/state.rs`.
+  and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
+  only in `src/config.rs` and `src/backup/state.rs`.
 - AWS crates take `default-features = false` and ring-based rustls (see `Cargo.toml`).
 
 ## Backup invariants

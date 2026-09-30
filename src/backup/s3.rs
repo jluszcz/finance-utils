@@ -54,7 +54,7 @@ pub fn upload(profile: &str, bucket: &str, key: &str, file: &Path) -> Result<()>
             .bucket(bucket)
             .key(key)
             .body(body)
-            .content_type("application/vnd.sqlite3")
+            .content_type("application/zstd")
             // Create, never replace: the IAM policy refuses a PutObject
             // without this, which is what stops a stolen key from overwriting
             // an existing backup.

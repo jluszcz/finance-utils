@@ -19,7 +19,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `money` | `money::{Cents, ParseMoneyError}` | `thiserror` |
 | `config` | `config::{default_path, state_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
-| `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio` |
+| `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `tui` | `tui::{centered, is_press, text, date}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
@@ -79,8 +79,10 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
   clamped to ten years before it reaches `TimeDelta::days`.
 - `run_if_due(spec, db_path, cfg, state_path, now, force, snapshot) -> Result<Outcome>`, where
   `snapshot` copies the database at the first path to the second. The caller supplies it, so the
-  crate never depends on `rusqlite`.
-- `Outcome { Disabled, NotDue { next }, BackedUp { bucket, key, bytes } }`.
+  crate never depends on `rusqlite`. The snapshot is zstd-compressed before upload, so the key
+  ends `.db.zst` and a restore runs `zstd -d` on the download.
+- `Outcome { Disabled, NotDue { next }, BackedUp { bucket, key, bytes } }`; `bytes` is the
+  compressed size.
 - `state::{State, read, write}`: `read` gives `Ok(None)` for a missing file and `Err` for an
   unreadable one.
 - `s3::upload(profile, bucket, key, file)`: a current-thread runtime for the one call, credentials
