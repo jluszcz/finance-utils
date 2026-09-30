@@ -54,6 +54,17 @@ mod tests {
     }
 
     #[test]
+    fn shorthand_is_trimmed_and_needs_a_slash() {
+        assert_eq!(
+            parse_shorthand(" 1/30 ", today()).unwrap(),
+            day(2026, 1, 30)
+        );
+        for bad in ["130", ""] {
+            assert!(parse_shorthand(bad, today()).is_err(), "{bad:?} parsed");
+        }
+    }
+
+    #[test]
     fn text_that_is_not_a_date_is_refused() {
         for bad in ["13/1", "2/30", "2026/01/16"] {
             assert!(parse_shorthand(bad, today()).is_err(), "{bad:?} parsed");

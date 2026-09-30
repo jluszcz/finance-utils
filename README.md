@@ -89,8 +89,8 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
   - `BackupArgs` (`clap::Args`): `--force`, and `--status` conflicting with it.
   - `command(spec, db_path, cfg, args, snapshot)`: the `backup` subcommand; a failed run is an
     error exit.
-  - `scheduled(spec, db_path, cfg, snapshot)`: the check after every run. It never fails and
-    prints only when it uploaded.
+  - `scheduled(spec, db_path, cfg, snapshot)`: the check after every run. It never fails; it
+    prints to stdout only when it uploaded, and a failure goes to stderr.
   - `describe(&Outcome) -> String` and `status(spec, cfg, state) -> String` build the text the two
     print.
 

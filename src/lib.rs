@@ -3,7 +3,7 @@
 //! page of the figures written on quit, and a scheduled S3 backup.
 //!
 //! Every feature is off by default. An application names itself once, as a
-//! [`backup::Spec`] and a report file name, and every path, key and profile
+//! `backup::Spec` and a report file name, and every path, key and profile
 //! that differs between the two is derived from that.
 
 #![warn(missing_docs)]

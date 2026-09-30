@@ -35,6 +35,16 @@ pub fn command(
     args: &BackupArgs,
     snapshot: impl FnOnce(&Path, &Path) -> Result<()>,
 ) -> Result<()> {
+    // The state path needs `HOME` or `XDG_STATE_HOME`, so it is resolved only
+    // once there is a backup to report on or run.
+    if cfg.is_none() {
+        if args.status {
+            print!("{}", status(spec, None, None));
+        } else {
+            println!("{}", describe(&Outcome::Disabled));
+        }
+        return Ok(());
+    }
     let state_path = spec.state_path()?;
     if args.status {
         print!("{}", status(spec, cfg, read_state(&state_path).as_ref()));
@@ -207,6 +217,24 @@ mod tests {
              last 2026-08-20 14:00 UTC (ledger-20260820T140000Z.db)\n\
              next 2026-08-27 14:00 UTC\n"
         );
+    }
+
+    #[test]
+    fn the_subcommand_with_no_backup_section_touches_neither_state_nor_database() {
+        for status in [false, true] {
+            let args = BackupArgs {
+                force: false,
+                status,
+            };
+            command(
+                &SPEC,
+                Path::new("/nonexistent/ledger.db"),
+                None,
+                &args,
+                |_, _| panic!("the database was read"),
+            )
+            .unwrap();
+        }
     }
 
     /// Resolving the state path needs `HOME`; with nothing to schedule it

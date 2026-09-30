@@ -1,6 +1,6 @@
-//! When the last backup succeeded, kept beside the config file rather than
-//! inside it: one is edited by a person, the other is written by the program
-//! and means nothing on another machine.
+//! When the last backup succeeded, kept under `$XDG_STATE_HOME` rather than in
+//! or beside the config file: one is edited by a person, the other is written
+//! by the program and means nothing on another machine.
 //!
 //! Written only after a successful upload, so a failed run leaves the
 //! schedule due rather than recording an attempt that moved no bytes.
@@ -15,7 +15,8 @@ use std::path::Path;
 pub struct State {
     /// When the last upload finished, which the schedule counts from.
     pub last_backup_at: DateTime<Utc>,
-    /// Read by nothing but a status command, and by a person wondering what the last upload was.
+    /// Read by nothing but a status command, and by a person wondering what
+    /// the last upload was.
     pub last_key: String,
 }
 

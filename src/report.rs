@@ -18,10 +18,9 @@ pub fn minify(page: &str) -> Vec<u8> {
     minify_html::minify(page.as_bytes(), &cfg)
 }
 
-/// Every interpolation of user-typed text goes through here: a field named
-/// with an angle bracket would otherwise truncate the page at its own row.
-/// Escapes `&`, `<`, `>` and `"`, never `'`, because no attribute on this
-/// page is single-quoted.
+/// Escapes `&`, `<`, `>` and `"`. Safe for text content and for
+/// double-quoted attribute values; not for single-quoted or unquoted
+/// attributes, since it does not escape `'`.
 pub fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for ch in text.chars() {

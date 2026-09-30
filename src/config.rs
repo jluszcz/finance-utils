@@ -207,7 +207,8 @@ mod tests {
     {
         let path = fixture("relative", "[report]\ndir = \"Dropbox/pay\"\n");
         let report = load_config(&path).unwrap().report.unwrap();
-        assert!(report.dir().is_err());
+        let err = report.dir().unwrap_err();
+        assert!(format!("{err:#}").contains("Dropbox/pay"), "{err:#}");
     }
 
     #[test]
