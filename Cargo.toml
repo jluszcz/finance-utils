@@ -11,7 +11,7 @@ repository = "https://github.com/jluszcz/finance-utils"
 money = ["dep:thiserror"]
 config = ["dep:serde", "dep:toml"]
 report = ["config", "dep:chrono", "dep:minify-html"]
-backup = ["config", "dep:chrono", "chrono/serde", "dep:clap", "dep:aws-config", "dep:aws-sdk-s3", "dep:aws-smithy-types", "dep:tokio"]
+backup = ["config", "dep:chrono", "chrono/serde", "dep:clap", "dep:aws-config", "dep:aws-sdk-s3", "dep:aws-smithy-types", "dep:tokio", "dep:zstd"]
 tui = ["dep:ratatui", "dep:chrono"]
 test-support = ["tui"]
 
@@ -32,3 +32,4 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 thiserror = { version = "2.0", optional = true }
 tokio = { version = "1.53", features = ["rt", "net", "time"], optional = true }
 toml = { version = "1.1", optional = true }
+zstd = { version = "0.14", optional = true }

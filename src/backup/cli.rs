@@ -166,12 +166,12 @@ mod tests {
     fn an_upload_is_described_by_its_size_and_where_it_landed() {
         let outcome = Outcome::BackedUp {
             bucket: "a-bucket".to_string(),
-            key: "ledger-20260820T140000Z.db".to_string(),
+            key: "ledger-20260820T140000Z.db.zst".to_string(),
             bytes: 2048,
         };
         assert_eq!(
             describe(&outcome),
-            "backed up 2 KiB to s3://a-bucket/ledger-20260820T140000Z.db"
+            "backed up 2 KiB to s3://a-bucket/ledger-20260820T140000Z.db.zst"
         );
     }
 
@@ -208,13 +208,13 @@ mod tests {
     fn status_gives_the_last_backup_and_the_next_one_due() {
         let state = State {
             last_backup_at: at(20),
-            last_key: "ledger-20260820T140000Z.db".to_string(),
+            last_key: "ledger-20260820T140000Z.db.zst".to_string(),
         };
         let text = status(&SPEC, Some(&cfg(Some("a-profile"))), Some(&state));
         assert_eq!(
             text,
             "bucket a-bucket, profile a-profile, every 7 days\n\
-             last 2026-08-20 14:00 UTC (ledger-20260820T140000Z.db)\n\
+             last 2026-08-20 14:00 UTC (ledger-20260820T140000Z.db.zst)\n\
              next 2026-08-27 14:00 UTC\n"
         );
     }

@@ -76,9 +76,10 @@ pub struct Spec {
 impl Spec {
     /// At the root of the bucket, under no prefix: the bucket holds nothing
     /// else, so a prefix would be a second spelling the IAM policy has to
-    /// match. Sortable, so `aws s3 ls` lists the history in order.
+    /// match. Sortable, so `aws s3 ls` lists the history in order. `.db.zst`,
+    /// so `zstd -d` on a download names the database without being told.
     pub fn key_for(&self, now: DateTime<Utc>) -> String {
-        format!("{}-{}.db", self.stem, now.format("%Y%m%dT%H%M%SZ"))
+        format!("{}-{}.db.zst", self.stem, now.format("%Y%m%dT%H%M%SZ"))
     }
 
     /// `$XDG_STATE_HOME/<app>/backup.toml`.
@@ -90,6 +91,16 @@ impl Spec {
     fn snapshot_dir(&self) -> PathBuf {
         std::env::temp_dir().join(format!("{}-backup-{}", self.app, std::process::id()))
     }
+}
+
+/// The default level: a larger one buys little on a database of megabytes, and
+/// the scheduled check runs after the user has quit, while they wait.
+fn compress(src: &Path, dest: &Path) -> Result<()> {
+    let input = std::fs::File::open(src).with_context(|| format!("opening {}", src.display()))?;
+    let output =
+        std::fs::File::create_new(dest).with_context(|| format!("creating {}", dest.display()))?;
+    zstd::stream::copy_encode(input, output, zstd::DEFAULT_COMPRESSION_LEVEL)
+        .with_context(|| format!("compressing {}", src.display()))
 }
 
 /// What a call to [`run_if_due`] did.
@@ -108,7 +119,7 @@ pub enum Outcome {
         bucket: String,
         /// The object's key within it.
         key: String,
-        /// The snapshot's size.
+        /// The uploaded object's size, compressed.
         bytes: u64,
     },
 }
@@ -179,17 +190,19 @@ fn run(
 
     create_snapshot_dir(dir).with_context(|| format!("creating {}", dir.display()))?;
     let snapshot_path = dir.join(format!("{}.db", spec.stem));
+    let compressed_path = dir.join(format!("{}.db.zst", spec.stem));
     let key = spec.key_for(now);
     let result = (|| {
         snapshot(db_path, &snapshot_path)?;
-        let bytes = std::fs::metadata(&snapshot_path)
-            .with_context(|| format!("measuring {}", snapshot_path.display()))?
+        compress(&snapshot_path, &compressed_path)?;
+        let bytes = std::fs::metadata(&compressed_path)
+            .with_context(|| format!("measuring {}", compressed_path.display()))?
             .len();
         upload(
             backup.profile_or(spec.app),
             &backup.bucket,
             &key,
-            &snapshot_path,
+            &compressed_path,
         )?;
         Ok::<u64, anyhow::Error>(bytes)
     })();
@@ -309,7 +322,7 @@ mod tests {
     #[test]
     fn a_key_is_the_stem_and_a_sortable_utc_timestamp_under_no_prefix() {
         let now = Utc.with_ymd_and_hms(2026, 8, 20, 14, 3, 5).unwrap();
-        assert_eq!(SPEC.key_for(now), "ledger-20260820T140305Z.db");
+        assert_eq!(SPEC.key_for(now), "ledger-20260820T140305Z.db.zst");
     }
 
     #[cfg(unix)]
@@ -407,7 +420,7 @@ mod tests {
             copy,
             &snapshot_dir,
             |profile, bucket, key, file| {
-                assert_eq!(file.file_name().unwrap(), "ledger.db");
+                assert_eq!(file.file_name().unwrap(), "ledger.db.zst");
                 uploaded = Some((
                     profile.to_string(),
                     bucket.to_string(),
@@ -441,6 +454,32 @@ mod tests {
             })
         );
         assert!(!snapshot_dir.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_uploaded_file_decompresses_to_the_database() {
+        let dir = scratch("round_trip");
+        let db_path = a_database(&dir);
+        let mut uploaded = None;
+
+        run(
+            &SPEC,
+            &db_path,
+            Some(&backing_up_to("a-bucket")),
+            &dir.join("backup.toml"),
+            at(20, 0),
+            false,
+            copy,
+            &dir.join("snapshot"),
+            |_, _, _, file| {
+                uploaded = Some(zstd::decode_all(std::fs::File::open(file)?)?);
+                Ok(())
+            },
+        )
+        .unwrap();
+
+        assert_eq!(uploaded.unwrap(), std::fs::read(&db_path).unwrap());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
