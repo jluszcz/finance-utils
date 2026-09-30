@@ -1,6 +1,7 @@
 //! Backing the database up to S3: the schedule, the snapshot, and the run
 //! that joins them to the upload.
 
+pub mod cli;
 pub mod s3;
 pub mod state;
 
