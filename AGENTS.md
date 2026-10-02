@@ -9,7 +9,7 @@ cargo build --all-features
 cargo test --all-features
 cargo fmt                                                   # pre-commit runs `cargo fmt --check`
 cargo clippy --all-targets --all-features -- -D warnings    # CI treats warnings as errors
-for f in money config report backup tui test-support; do cargo check --no-default-features --features $f || break; done
+for f in money config report backup scratch tui test-support; do cargo check --no-default-features --features $f || break; done
 ```
 
 ## What this is
@@ -51,7 +51,8 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 - The state file is advisory: unreadable means a warning and one redundant upload. It is written
   only after a successful upload, and the snapshot is removed on both paths.
 - The snapshot directory's leaf is created non-recursively with mode 0700; see
-  `create_snapshot_dir`.
+  `private_dir::create`, which `scratch::copy` creates its directory with too. Anything here that
+  writes a copy of a database to disk goes through it.
 - `interval_days` is clamped to ten years before it reaches `TimeDelta::days`, which panics
   outside chrono's calendar.
 

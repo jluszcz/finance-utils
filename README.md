@@ -20,6 +20,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `config` | `config::{default_path, state_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
+| `scratch` | `scratch::copy` | `chrono` |
 | `tui` | `tui::{centered, is_press, text, date}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
@@ -99,6 +100,14 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
 Neither `command` nor `scheduled` opens the database. The caller runs the scheduled check only on
 its default database. The IAM policy and bucket stay in each application's Terraform, which must
 allow `PutObject` only, and only with `If-None-Match`.
+
+### `scratch`
+
+`copy(app, src, snapshot) -> Result<PathBuf>`: snapshots the database at `src` into
+`<temp dir>/<app>-scratch-<timestamp>-<pid>/`, mode 0700, and returns the copy's path, for a run
+that must not touch the real database. `snapshot` is the closure `backup` takes. A missing `src` is
+an error rather than an empty copy. The directory is removed if the snapshot fails and left behind
+if it succeeds, so the copy can be inspected after the run.
 
 ### `tui`
 
