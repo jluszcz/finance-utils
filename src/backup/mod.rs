@@ -34,34 +34,6 @@ fn interval(days: u32) -> TimeDelta {
     TimeDelta::days(i64::from(days.min(MAX_INTERVAL_DAYS)))
 }
 
-// The snapshot is the whole database in cleartext, in a directory under `/tmp`
-// on Linux. The leaf is created non-recursively with mode 0700, and that is
-// the guard: a recursive create returns `Ok` for a directory someone else made
-// first, keeps its mode, and follows a symlink planted there. A directory
-// already at this path (a killed run that had the same pid) is removed first;
-// anything that survives the removal is left for the `create` to fail on. A
-// run killed mid-upload leaves its own pid's directory behind, mode 0700,
-// for the system's temp cleaner.
-#[cfg(unix)]
-fn create_snapshot_dir(dir: &Path) -> std::io::Result<()> {
-    use std::os::unix::fs::DirBuilderExt;
-
-    if let Some(parent) = dir.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    match std::fs::remove_dir_all(dir) {
-        Ok(()) => {}
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-        Err(e) => return Err(e),
-    }
-    std::fs::DirBuilder::new().mode(0o700).create(dir)
-}
-
-#[cfg(not(unix))]
-fn create_snapshot_dir(dir: &Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dir)
-}
-
 /// What an application is called, which is all that differs between two
 /// applications' backups.
 #[derive(Clone, Copy, Debug)]
@@ -188,7 +160,7 @@ fn run(
         });
     }
 
-    create_snapshot_dir(dir).with_context(|| format!("creating {}", dir.display()))?;
+    crate::private_dir::create(dir).with_context(|| format!("creating {}", dir.display()))?;
     let snapshot_path = dir.join(format!("{}.db", spec.stem));
     let compressed_path = dir.join(format!("{}.db.zst", spec.stem));
     let key = spec.key_for(now);
@@ -323,39 +295,6 @@ mod tests {
     fn a_key_is_the_stem_and_a_sortable_utc_timestamp_under_no_prefix() {
         let now = Utc.with_ymd_and_hms(2026, 8, 20, 14, 3, 5).unwrap();
         assert_eq!(SPEC.key_for(now), "ledger-20260820T140305Z.db.zst");
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_snapshot_directory_is_readable_only_by_its_owner() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let dir = scratch("mode").join("snapshot");
-        create_snapshot_dir(&dir).unwrap();
-        let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
-        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    }
-
-    /// The path is predictable, so another local account can create it first.
-    /// A recursive create would accept that directory and its mode; this fails
-    /// if anyone reaches for `create_dir_all` here.
-    #[cfg(unix)]
-    #[test]
-    fn a_snapshot_directory_that_already_exists_does_not_keep_its_permissions() {
-        use std::os::unix::fs::PermissionsExt;
-
-        let dir = scratch("squatted").join("snapshot");
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o777)).unwrap();
-        std::fs::write(dir.join("planted"), b"planted").unwrap();
-
-        create_snapshot_dir(&dir).unwrap();
-
-        let mode = std::fs::metadata(&dir).unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
-        assert!(!dir.join("planted").exists());
-        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     }
 
     #[test]

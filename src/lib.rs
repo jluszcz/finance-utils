@@ -14,8 +14,12 @@ pub mod backup;
 pub mod config;
 #[cfg(feature = "money")]
 pub mod money;
+#[cfg(any(feature = "backup", feature = "scratch"))]
+mod private_dir;
 #[cfg(feature = "report")]
 pub mod report;
+#[cfg(feature = "scratch")]
+pub mod scratch;
 #[cfg(feature = "tui")]
 pub mod tui;
 
