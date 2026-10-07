@@ -116,7 +116,12 @@ if it succeeds, so the copy can be inspected after the run.
   editing shared by every text box. `TextBuffer` has `value`, `caret`, `len`, `is_empty`, `set`,
   `clear`, `insert`, `backspace`, `delete`, `step`, `start`, `end`, `delete_word_back`,
   `kill_to_start` and `kill_to_end`.
-- `date::{iso, parse_shorthand, parse, Step}`: `iso` formats `YYYY-MM-DD`; `parse_shorthand` resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse` reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week), and `[`/`]` (a month) do to a date field, via `Step::from_key`.
+- `date::{iso, parse_shorthand, parse, Step}`: `iso` formats `YYYY-MM-DD`; `parse_shorthand`
+  resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse`
+  reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week),
+  and `[`/`]` (a month) do to a date field, via `Step::from_key`.
+- `help::Entry` tables drive both the footer (`footer_items`, joined by the application) and the
+  `?` panel (`render_panel`).
 
 ### `test-support`
 
