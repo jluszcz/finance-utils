@@ -75,14 +75,18 @@ impl Step {
     /// `[`.
     pub const PREVIOUS_MONTH: Step = Step::months(-1);
 
-    const fn days(amount: i64) -> Step {
+    /// A step of `amount` days, negative for backwards: for a step the six
+    /// constants do not cover, such as a fortnight's prefill.
+    pub const fn days(amount: i64) -> Step {
         Step {
             amount,
             unit: Unit::Days,
         }
     }
 
-    const fn months(amount: i64) -> Step {
+    /// A step of `amount` calendar months, negative for backwards, clamping
+    /// the day as [`Step::apply`] does.
+    pub const fn months(amount: i64) -> Step {
         Step {
             amount,
             unit: Unit::Months,
@@ -281,5 +285,11 @@ mod tests {
             Step::from_key(press(KeyCode::Char('x'), KeyModifiers::NONE)),
             None
         );
+    }
+
+    #[test]
+    fn a_step_past_the_end_of_the_calendar_is_none() {
+        assert_eq!(Step::NEXT.apply(NaiveDate::MAX), None);
+        assert_eq!(Step::PREVIOUS_MONTH.apply(NaiveDate::MIN), None);
     }
 }
