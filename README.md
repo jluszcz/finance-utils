@@ -21,7 +21,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
-| `tui` | `tui::{centered, is_press, text, date}` | `ratatui`, `chrono` |
+| `tui` | `tui::{centered, is_press, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -120,8 +120,9 @@ if it succeeds, so the copy can be inspected after the run.
   resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse`
   reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week),
   and `[`/`]` (a month) do to a date field, via `Step::from_key`.
-- `help::Entry` tables drive both the footer (`footer_items`, joined by the application) and the
-  `?` panel (`render_panel`).
+- `help::Entry` tables, each entry's footer `Label`, drive both the footer (`footer_items`, joined
+  by the application) and the `?` panel (`render_panel`); `duplicate_keys` finds keys a table
+  binds twice.
 
 ### `test-support`
 

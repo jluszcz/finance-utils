@@ -107,7 +107,9 @@ pub fn duplicate_keys(table: &[Entry]) -> Vec<&'static str> {
 }
 
 /// The help panel: each topic's title in bold, then its keys and details in
-/// two aligned columns, centered over `area`.
+/// two aligned columns, centered over `area`. The panel is unwrapped and
+/// unscrolled, sized to its content: it suits short tables, and an
+/// application whose help needs wrapping or scrolling keeps its own.
 pub fn render_panel(frame: &mut Frame, area: Rect, topics: &[(&str, &[Entry])]) {
     let key_w = topics
         .iter()
