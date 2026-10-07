@@ -10,7 +10,7 @@ path, key and profile that differs between the two is derived from that.
 Every feature is off by default and additive:
 
 ```toml
-jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", features = ["money", "report", "backup", "tui"] }
+jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", features = ["money", "report", "backup", "cli", "tui"] }
 ```
 
 | Feature | Adds | Dependencies |
@@ -21,6 +21,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
+| `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
 | `tui` | `tui::{centered, is_press, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
@@ -108,6 +109,21 @@ allow `PutObject` only, and only with `If-None-Match`.
 that must not touch the real database. `snapshot` is the closure `backup` takes. A missing `src` is
 an error rather than an empty copy. The directory is removed if the snapshot fails and left behind
 if it succeeds, so the copy can be inspected after the run.
+
+### `cli`
+
+`cli::CommonArgs` is the `--db`, `--scratch`, `--today`, and `--config` flags, flattened into an
+application's own `Cli`. `db_path` takes the default path as a closure, called only under
+`--scratch` or with no flag, and resolves `--scratch` through `scratch::copy`; `is_default_db`
+says whether the backup schedule applies to the run. `config_path` is `--config` or the
+application's default, and `today_or_local` is `--today` or the local date. `is_scratch_session`
+says the run is on another database or another day; it is also true for `--today` alone, so it is
+not the complement of `is_default_db`.
+
+The flags' help is the doc comments on `CommonArgs`, so `--db` does not name the application's
+default path; an application can restore that with
+`#[command(mut_arg("db", |a| a.help("...")))]` on its `Cli`. The application's `Cli` should set
+its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 
 ### `tui`
 
