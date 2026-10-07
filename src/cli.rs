@@ -55,18 +55,21 @@ impl CommonArgs {
     }
 
     /// The database this run opens: `--db`, a fresh [`scratch::copy`] of
-    /// `default` under `--scratch`, or `default`. The caller prints a scratch
-    /// copy's path, since only it knows where its output goes.
+    /// `default()` under `--scratch`, or `default()`. `default` is a closure
+    /// because computing it can fail or create the application's data
+    /// directory, neither of which an explicit `--db` should pay for. The
+    /// caller prints a scratch copy's path, since only it knows where its
+    /// output goes.
     pub fn db_path(
         &self,
         app: &str,
-        default: PathBuf,
+        default: impl FnOnce() -> Result<PathBuf>,
         snapshot: impl FnOnce(&Path, &Path) -> Result<()>,
     ) -> Result<PathBuf> {
         match &self.db {
             Some(path) => Ok(path.clone()),
-            None if self.scratch => scratch::copy(app, &default, snapshot),
-            None => Ok(default),
+            None if self.scratch => scratch::copy(app, &default()?, snapshot),
+            None => default(),
         }
     }
 }
@@ -133,14 +136,27 @@ mod tests {
         };
         let given = parse(&["--db", "/tmp/given.db"]).unwrap().common;
         assert_eq!(
-            given.db_path("app", "/d.db".into(), never).unwrap(),
+            given.db_path("app", || Ok("/d.db".into()), never).unwrap(),
             std::path::PathBuf::from("/tmp/given.db")
         );
         let plain = parse(&[]).unwrap().common;
         assert_eq!(
-            plain.db_path("app", "/d.db".into(), never).unwrap(),
+            plain.db_path("app", || Ok("/d.db".into()), never).unwrap(),
             std::path::PathBuf::from("/d.db")
         );
+    }
+
+    #[test]
+    fn the_default_database_is_not_computed_when_db_is_given() {
+        let given = parse(&["--db", "/tmp/given.db"]).unwrap().common;
+        let path = given
+            .db_path(
+                "app",
+                || panic!("no default path under --db"),
+                |_, _| panic!("no snapshot under --db"),
+            )
+            .unwrap();
+        assert_eq!(path, std::path::PathBuf::from("/tmp/given.db"));
     }
 
     #[test]
@@ -149,10 +165,14 @@ mod tests {
         std::fs::write(&src, b"db").unwrap();
         let common = parse(&["--scratch"]).unwrap().common;
         let copy = common
-            .db_path("cli-test", src.clone(), |from, to| {
-                std::fs::copy(from, to)?;
-                Ok(())
-            })
+            .db_path(
+                "cli-test",
+                || Ok(src.clone()),
+                |from, to| {
+                    std::fs::copy(from, to)?;
+                    Ok(())
+                },
+            )
             .unwrap();
         assert_ne!(copy, src);
         assert_eq!(std::fs::read(&copy).unwrap(), b"db");

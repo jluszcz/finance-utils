@@ -113,8 +113,17 @@ if it succeeds, so the copy can be inspected after the run.
 ### `cli`
 
 `cli::CommonArgs` is the `--db`, `--scratch`, `--today`, and `--config` flags, flattened into an
-application's own `Cli`. `db_path` resolves `--scratch` through `scratch::copy`; `is_default_db`
-says whether the backup schedule applies to the run.
+application's own `Cli`. `db_path` takes the default path as a closure, called only under
+`--scratch` or with no flag, and resolves `--scratch` through `scratch::copy`; `is_default_db`
+says whether the backup schedule applies to the run. `config_path` is `--config` or the
+application's default, and `today_or_local` is `--today` or the local date. `is_scratch_session`
+says the run is on another database or another day; it is also true for `--today` alone, so it is
+not the complement of `is_default_db`.
+
+The flags' help is the doc comments on `CommonArgs`, so `--db` does not name the application's
+default path; an application can restore that with
+`#[command(mut_arg("db", |a| a.help("...")))]` on its `Cli`. The application's `Cli` should set
+its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 
 ### `tui`
 
