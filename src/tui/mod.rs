@@ -1,4 +1,4 @@
-//! Pieces of a ratatui front end both applications draw the same way.
+//! Pieces of a ratatui front end every application draws the same way.
 
 pub mod date;
 pub mod help;

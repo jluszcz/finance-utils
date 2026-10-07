@@ -1,7 +1,7 @@
 //! The upload, and the only place `aws_config`, `aws_sdk_s3`,
 //! `aws_smithy_types` and `tokio` are named.
 //!
-//! The runtime is built for one upload and dropped. Neither application is
+//! The runtime is built for one upload and dropped. No application is
 //! otherwise async: SQLite is blocking and the TUI is a poll loop.
 
 use anyhow::{Context, Result, anyhow};

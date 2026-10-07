@@ -14,11 +14,12 @@ for f in money config report backup scratch cli tui test-support; do cargo check
 
 ## What this is
 
-Code shared by Paychecker and MisterManager, consumed by both as an unpinned git dependency: a
-change to `main` reaches both on their next `cargo update`, so `main` must always build for both.
-Features are default-off and additive. What differs between the applications is passed in: the
-application's name and key stem as a `backup::Spec`, the report's file name, the snapshot as a
-closure. Nothing here names either application.
+Code shared by Paychecker, MisterManager and Funder, consumed by each as an unpinned git
+dependency: a change to `main` reaches all three on their next `cargo update`, so `main` must
+always build for all of them. Features are default-off and additive, and each application enables
+only what it uses (Funder writes no report). What differs between the applications is passed in:
+the application's name and key stem as a `backup::Spec`, the report's file name, the snapshot as a
+closure. Nothing here names any application.
 
 ## No real data in the repository
 
