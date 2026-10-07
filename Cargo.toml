@@ -3,7 +3,7 @@ name = "jluszcz_finance_utils"
 authors = ["Jacob Luszcz"]
 version = "0.1.0"
 edition = "2024"
-description = "Code shared by Paychecker and MisterManager: money, config, the HTML report, S3 backups, and TUI text editing."
+description = "Code shared by Paychecker and MisterManager: money, config, the HTML report, S3 backups, the common CLI flags, and TUI text editing."
 license = "MIT"
 repository = "https://github.com/jluszcz/finance-utils"
 
@@ -13,6 +13,7 @@ config = ["dep:serde", "dep:toml"]
 report = ["config", "dep:chrono", "dep:minify-html"]
 backup = ["config", "dep:chrono", "chrono/serde", "dep:clap", "dep:aws-config", "dep:aws-sdk-s3", "dep:aws-smithy-types", "dep:tokio", "dep:zstd"]
 scratch = ["dep:chrono"]
+cli = ["config", "scratch", "dep:clap"]
 tui = ["dep:ratatui", "dep:chrono"]
 test-support = ["tui"]
 

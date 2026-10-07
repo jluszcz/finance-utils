@@ -9,7 +9,7 @@ cargo build --all-features
 cargo test --all-features
 cargo fmt                                                   # pre-commit runs `cargo fmt --check`
 cargo clippy --all-targets --all-features -- -D warnings    # CI treats warnings as errors
-for f in money config report backup scratch tui test-support; do cargo check --no-default-features --features $f || break; done
+for f in money config report backup scratch cli tui test-support; do cargo check --no-default-features --features $f || break; done
 ```
 
 ## What this is
