@@ -21,7 +21,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
-| `tui` | `tui::{centered, is_press, text, date}` | `ratatui`, `chrono` |
+| `tui` | `tui::{centered, is_press, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -116,7 +116,13 @@ if it succeeds, so the copy can be inspected after the run.
   editing shared by every text box. `TextBuffer` has `value`, `caret`, `len`, `is_empty`, `set`,
   `clear`, `insert`, `backspace`, `delete`, `step`, `start`, `end`, `delete_word_back`,
   `kill_to_start` and `kill_to_end`.
-- `date::{iso, parse_shorthand, parse, Step}`: `iso` formats `YYYY-MM-DD`; `parse_shorthand` resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse` reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week), and `[`/`]` (a month) do to a date field, via `Step::from_key`.
+- `date::{iso, parse_shorthand, parse, Step}`: `iso` formats `YYYY-MM-DD`; `parse_shorthand`
+  resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse`
+  reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week),
+  and `[`/`]` (a month) do to a date field, via `Step::from_key`.
+- `help::Entry` tables, each entry's footer `Label`, drive both the footer (`footer_items`, joined
+  by the application) and the `?` panel (`render_panel`); `duplicate_keys` finds keys a table
+  binds twice.
 
 ### `test-support`
 
