@@ -81,6 +81,52 @@ impl CommonArgs {
     }
 }
 
+/// What `--scratch` says in every application's help.
+const SCRATCH_HELP: &str = "Run against a copy of the default database in a fresh temporary \
+    directory, leaving the real one untouched -- for trying a migration before it reaches the \
+    file that matters. The copy is left behind and its path printed, so it can be inspected \
+    afterwards";
+
+/// `cmd` with `--db`, `--config` and `--scratch` saying where this
+/// application's own files are. The paths are written as `~/...` rather than
+/// resolved, because help is read on machines with other homes and other XDG
+/// settings. `writes_report` adds where a scratch run's page goes.
+pub fn name_defaults(
+    cmd: clap::Command,
+    app: &str,
+    db_file: &str,
+    writes_report: bool,
+) -> clap::Command {
+    let scratch = if writes_report {
+        format!(
+            "{SCRATCH_HELP}, and the report is written beside it rather than into the \
+             configured directory"
+        )
+    } else {
+        SCRATCH_HELP.to_string()
+    };
+    cmd.mut_arg("db", |a| {
+        a.help(format!(
+            "Database file. Defaults to ~/.local/share/{app}/{db_file}"
+        ))
+    })
+    .mut_arg("config", |a| {
+        a.help(format!(
+            "Config file. Defaults to ~/.config/{app}/config.toml"
+        ))
+    })
+    .mut_arg("scratch", |a| a.help(scratch))
+}
+
+/// The process's arguments parsed into `T` with [`name_defaults`] applied:
+/// `T::parse()` for a `Cli` that flattens [`CommonArgs`]. An error prints
+/// clap's usage message and exits exactly as `T::parse()` would.
+pub fn parse<T: clap::Parser>(app: &str, db_file: &str, writes_report: bool) -> T {
+    let mut cmd = name_defaults(T::command(), app, db_file, writes_report);
+    let matches = cmd.get_matches_mut();
+    T::from_arg_matches(&matches).unwrap_or_else(|e| e.format(&mut cmd).exit())
+}
+
 #[cfg(test)]
 mod tests {
     use super::CommonArgs;
@@ -201,5 +247,26 @@ mod tests {
         assert_eq!(std::fs::read(&copy).unwrap(), b"db");
         let _ = std::fs::remove_dir_all(copy.parent().unwrap());
         let _ = std::fs::remove_file(&src);
+    }
+
+    fn help(writes_report: bool) -> String {
+        use clap::CommandFactory;
+        super::name_defaults(Cli::command(), "app", "app.db", writes_report)
+            .render_help()
+            .to_string()
+    }
+
+    #[test]
+    fn the_help_names_the_default_database_and_config_paths() {
+        let help = help(false);
+        assert!(help.contains("~/.local/share/app/app.db"), "{help}");
+        assert!(help.contains("~/.config/app/config.toml"), "{help}");
+    }
+
+    #[test]
+    fn only_an_application_that_writes_a_report_says_where_a_scratch_runs_page_goes() {
+        assert!(help(true).contains("the report is written beside it"));
+        let without = help(false);
+        assert!(!without.contains("report"), "{without}");
     }
 }
