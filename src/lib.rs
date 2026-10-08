@@ -22,6 +22,8 @@ mod private_dir;
 pub mod report;
 #[cfg(feature = "scratch")]
 pub mod scratch;
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
 #[cfg(feature = "tui")]
 pub mod tui;
 
