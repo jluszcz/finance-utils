@@ -39,6 +39,35 @@ pub fn parse(raw: &str, today: NaiveDate) -> Result<NaiveDate> {
         .with_context(|| format!("not a YYYY-MM-DD or M/D date: {raw:?}"))
 }
 
+/// `raw` written out as `YYYY-MM-DD` when it is a date: what a field shows
+/// once focus leaves it. `None` for text that is not a date, which stays as
+/// typed.
+pub fn normalized(raw: &str, today: NaiveDate) -> Option<String> {
+    parse(raw, today).ok().map(iso)
+}
+
+/// The date `raw` means, written out, when `raw` does not already say it in
+/// full: what a form with nowhere for focus to go shows beside the field.
+pub fn resolved(raw: &str, today: NaiveDate) -> Option<String> {
+    normalized(raw, today).filter(|text| text != raw.trim())
+}
+
+/// `raw` stepped by `step`, written out. `None` when `raw` is not a date
+/// (blank, or half typed) or the step runs off the calendar: the keys nudge a
+/// date already there rather than conjure one.
+pub fn stepped(raw: &str, today: NaiveDate, step: Step) -> Option<String> {
+    step.apply(parse(raw, today).ok()?).map(iso)
+}
+
+/// [`parse`], where blank is an answer rather than a refusal: an undated
+/// row, a rule that does not end.
+pub fn parse_opt(raw: &str, today: NaiveDate) -> Result<Option<NaiveDate>> {
+    if raw.trim().is_empty() {
+        return Ok(None);
+    }
+    parse(raw, today).map(Some)
+}
+
 /// How far one keypress moves a date: a day, a week with `Shift`, or a month
 /// on `[`/`]`.
 ///
@@ -291,5 +320,58 @@ mod tests {
     fn a_step_past_the_end_of_the_calendar_is_none() {
         assert_eq!(Step::NEXT.apply(NaiveDate::MAX), None);
         assert_eq!(Step::PREVIOUS_MONTH.apply(NaiveDate::MIN), None);
+    }
+
+    fn june_first() -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 6, 1).unwrap()
+    }
+
+    #[test]
+    fn stepping_text_that_holds_a_date_writes_out_the_stepped_date() {
+        assert_eq!(
+            stepped("2026-01-31", june_first(), Step::NEXT).as_deref(),
+            Some("2026-02-01")
+        );
+        assert_eq!(
+            stepped("7/4", june_first(), Step::NEXT_WEEK).as_deref(),
+            Some("2026-07-11")
+        );
+    }
+
+    #[test]
+    fn stepping_blank_or_half_typed_text_leaves_it_alone() {
+        assert_eq!(stepped("", june_first(), Step::NEXT), None);
+        assert_eq!(stepped("2026-0", june_first(), Step::NEXT), None);
+        assert_eq!(stepped("7/", june_first(), Step::NEXT), None);
+    }
+
+    #[test]
+    fn normalizing_writes_out_any_date_and_leaves_other_text_alone() {
+        assert_eq!(
+            normalized("7/4", june_first()).as_deref(),
+            Some("2026-07-04")
+        );
+        assert_eq!(
+            normalized(" 2026-07-04 ", june_first()).as_deref(),
+            Some("2026-07-04")
+        );
+        assert_eq!(normalized("7/", june_first()), None);
+    }
+
+    #[test]
+    fn a_shorthand_resolves_to_the_date_it_means_but_a_full_date_resolves_to_nothing() {
+        assert_eq!(resolved("7/4", june_first()).as_deref(), Some("2026-07-04"));
+        assert_eq!(resolved(" 2026-07-04 ", june_first()), None);
+        assert_eq!(resolved("nonsense", june_first()), None);
+    }
+
+    #[test]
+    fn a_blank_optional_date_is_none_and_anything_else_must_parse() {
+        assert_eq!(parse_opt("  ", june_first()).unwrap(), None);
+        assert_eq!(
+            parse_opt("7/4", june_first()).unwrap(),
+            NaiveDate::from_ymd_opt(2026, 7, 4)
+        );
+        assert!(parse_opt("7/", june_first()).is_err());
     }
 }
