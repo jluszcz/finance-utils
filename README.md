@@ -17,12 +17,13 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 |---|---|---|
 | *(always)* | `human_bytes` | `anyhow` |
 | `money` | `money::{Cents, ParseMoneyError}` | `thiserror` |
-| `config` | `config::{default_path, state_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
-| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
+| `config` | `config::{default_path, state_path, data_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
+| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, cli}` | `config`, `chrono`, `clap`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
-| `tui` | `tui::{centered, is_press, text, date, help}` | `ratatui`, `chrono` |
+| `sqlite` | `sqlite::{open, open_in_memory, migrate, snapshot, Schema, Migration}` | `rusqlite` (bundled) |
+| `tui` | `tui::{centered, is_press, app, status, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -45,6 +46,8 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 - `default_path(app) -> Result<PathBuf>`: `$XDG_CONFIG_HOME/<app>/config.toml`, or `~/.config`
   when unset or empty.
 - `state_path(app, file) -> Result<PathBuf>`: `$XDG_STATE_HOME/<app>/<file>`, or `~/.local/state`.
+- `data_path(app, file) -> Result<PathBuf>`: `~/.local/share/<app>/<file>`, the database's home.
+  Fixed under `$HOME`; `$XDG_DATA_HOME` does not move it.
 - `load<T: DeserializeOwned + Default>(path) -> Result<T>`: a missing file is `T::default()`; a
   file that does not parse is an error naming the path.
 - `ReportConfig { dir }`: `new(dir)`, and `dir()` expands a leading `~` or `~/` and refuses a
@@ -70,6 +73,11 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
   written today and no rows were, else `Written`. `render` runs only when a page will be written.
 - `escape(text) -> String`: `&`, `<`, `>`, `"`.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.
+- `cli::ReportArgs` (`--dir`), flattened into an application's `report` subcommand;
+  `cli::dir(args, scratch_dir, cfg, config_path)` picks `--dir`, then a scratch run's directory,
+  then `[report] dir`, and with none is an error naming the config file. `cli::describe(&Written)`
+  is the `wrote 12 KiB to …` line; `cli::after_quit(result)` prints it, warns on an error, and is
+  silent otherwise.
 
 ### `backup`
 
@@ -80,8 +88,8 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
 - `is_due(last, now, interval_days)` and `next_due(last, interval_days)`; `interval_days` is
   clamped to ten years before it reaches `TimeDelta::days`.
 - `run_if_due(spec, db_path, cfg, state_path, now, force, snapshot) -> Result<Outcome>`, where
-  `snapshot` copies the database at the first path to the second. The caller supplies it, so the
-  crate never depends on `rusqlite`. The snapshot is zstd-compressed before upload, so the key
+  `snapshot` copies the database at the first path to the second. The caller supplies it
+  (`sqlite::snapshot` fits), so `backup` needs no `sqlite` feature. The snapshot is zstd-compressed before upload, so the key
   ends `.db.zst` and a restore runs `zstd -d` on the download.
 - `Outcome { Disabled, NotDue { next }, BackedUp { bucket, key, bytes } }`; `bytes` is the
   compressed size.
@@ -97,9 +105,12 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
     prints to stdout only when it uploaded, and a failure goes to stderr.
   - `describe(&Outcome) -> String` and `status(spec, cfg, state) -> String` build the text the two
     print.
+  - With `cli` on too, `CommonArgs::refuse_scratch_backup()` refuses `--scratch` with the
+    `backup` subcommand, and `CommonArgs::scheduled_backup(spec, db_path, cfg, snapshot)` is
+    `scheduled` on the default database only.
 
-Neither `command` nor `scheduled` opens the database. The caller runs the scheduled check only on
-its default database. The IAM policy and bucket stay in each application's Terraform, which must
+Neither `command` nor `scheduled` opens the database. The scheduled check belongs to the default
+database alone, which `scheduled_backup` enforces. The IAM policy and bucket stay in each application's Terraform, which must
 allow `PutObject` only, and only with `If-None-Match`.
 
 ### `scratch`
@@ -125,9 +136,28 @@ default path; an application can restore that with
 `#[command(mut_arg("db", |a| a.help("...")))]` on its `Cli`. The application's `Cli` should set
 its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 
+### `sqlite`
+
+- `Schema { baseline, seed, chain, remedy }`: the frozen version-1 SQL, rows a new database starts
+  with, the `Migration { version, sql, data }` arms above it, and what else the owner can do with a
+  database this build will not migrate. `head()` is one plus the chain's length; `check_versions`
+  is for an application's test that each arm declares the version its position gives it.
+- `open(path, &schema)` creates the parent directory, turns on foreign keys and WAL, and migrates;
+  `open_in_memory(&schema)` is the same for tests, so each replays the whole chain.
+- `migrate` runs the chain in one transaction with foreign keys off, checks
+  `pragma_foreign_key_check` at the end, and refuses a database newer than the build.
+- `snapshot(src, dest)` is `VACUUM INTO` without migrating, for `backup` and `scratch::copy`.
+
 ### `tui`
 
 - `centered(area, width, height) -> Rect` and `is_press(&KeyEvent) -> bool`.
+- `app::{App, run}`: `run` owns the terminal and the loop that draws and reads keys, and hands
+  the `App` back on quit. It draws only when a key press, a resize, an expired status message
+  (`expire_status`) or deferred work (`run_deferred`, which defaults to none) changed something,
+  and checks for expiry every quarter second.
+- `status::StatusLine`: the footer's message, error or not. With no modal open it lasts until the
+  next key or `status::TTL` (four seconds); under a modal, until the modal closes. The application
+  brackets each key with `begin_key`/`end_key` and passes whether a modal is open.
 - `text::{TextBuffer, Edit, edit_key, is_bare}`: a line of text with a caret, and the Ctrl-key
   editing shared by every text box. `TextBuffer` has `value`, `caret`, `len`, `is_empty`, `set`,
   `clear`, `insert`, `backspace`, `delete`, `step`, `start`, `end`, `delete_word_back`,

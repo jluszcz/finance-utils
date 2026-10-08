@@ -44,6 +44,20 @@ pub fn state_path(app: &str, file: &str) -> Result<PathBuf> {
         .join(file))
 }
 
+/// `~/.local/share/<app>/<file>`: where an application keeps its database.
+///
+/// Fixed under `$HOME` rather than following `$XDG_DATA_HOME`, so a variable
+/// set for other programs cannot move the database out from under the
+/// backups and scratch copies that expect it here.
+pub fn data_path(app: &str, file: &str) -> Result<PathBuf> {
+    let home = std::env::var_os("HOME").context("HOME is not set")?;
+    Ok(PathBuf::from(home)
+        .join(".local")
+        .join("share")
+        .join(app)
+        .join(file))
+}
+
 /// The file at `path`, or `T::default()` when there is none. A file that does
 /// not parse is an error naming the path.
 pub fn load<T: DeserializeOwned + Default>(path: &Path) -> Result<T> {
@@ -303,6 +317,15 @@ mod tests {
     fn the_config_path_is_the_apps_own_directory_under_the_config_home() {
         let path = default_path("an-app").unwrap();
         assert!(path.ends_with("an-app/config.toml"), "{}", path.display());
+    }
+
+    #[test]
+    fn a_data_path_is_the_named_file_in_the_apps_own_directory_under_local_share() {
+        let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+        assert_eq!(
+            data_path("an-app", "an-app.db").unwrap(),
+            home.join(".local/share/an-app/an-app.db")
+        );
     }
 
     #[test]

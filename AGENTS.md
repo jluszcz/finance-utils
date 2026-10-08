@@ -9,7 +9,7 @@ cargo build --all-features
 cargo test --all-features
 cargo fmt                                                   # pre-commit runs `cargo fmt --check`
 cargo clippy --all-targets --all-features -- -D warnings    # CI treats warnings as errors
-for f in money config report backup scratch cli tui test-support; do cargo check --no-default-features --features $f || break; done
+for f in money config report backup scratch cli sqlite tui test-support; do cargo check --no-default-features --features $f || break; done
 ```
 
 ## What this is
@@ -31,9 +31,10 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 
 - `#![warn(missing_docs)]` plus `-D warnings`: every public item needs a doc comment. Document the
   *why* a caller cannot infer.
-- `rusqlite` is never a dependency: the applications own their databases, and `backup` takes the
-  snapshot as a closure.
-- `minify_html` is named only in `src/report.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
+- `rusqlite` is named only in `src/sqlite.rs`, behind the `sqlite` feature. The applications own
+  their schemas and their queries; `sqlite` opens, migrates and snapshots. `backup` and `scratch`
+  still take the snapshot as a closure, so neither needs the feature.
+- `minify_html` is named only in `src/report/mod.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
   and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
   only in `src/config.rs` and `src/backup/state.rs`.
 - AWS crates take `default-features = false` and ring-based rustls (see `Cargo.toml`).
@@ -47,8 +48,9 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   exported `AWS_ACCESS_KEY_ID` cannot substitute another identity.
 - No key prefix: `Spec::key_for` and each IAM policy's `<bucket arn>/*` would otherwise have to
   spell it identically, with `AccessDenied` as the only sign they drifted.
-- The schedule reads `Utc::now()`, never an application's simulated date, and callers run the
-  scheduled check only on their default database. An explicit backup command is exempt.
+- The schedule reads `Utc::now()`, never an application's simulated date, and the scheduled check
+  runs only on the default database, which `CommonArgs::scheduled_backup` enforces. An explicit
+  backup command is exempt.
 - The state file is advisory: unreadable means a warning and one redundant upload. It is written
   only after a successful upload, and the snapshot is removed on both paths.
 - The snapshot directory's leaf is created non-recursively with mode 0700; see
