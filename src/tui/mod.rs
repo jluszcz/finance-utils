@@ -1,5 +1,6 @@
 //! Pieces of a ratatui front end both applications draw the same way.
 
+pub mod app;
 pub mod date;
 pub mod help;
 #[cfg(feature = "test-support")]
