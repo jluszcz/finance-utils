@@ -22,6 +22,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
+| `sqlite` | `sqlite::{open, open_in_memory, migrate, snapshot, Schema, Migration}` | `rusqlite` (bundled) |
 | `tui` | `tui::{centered, is_press, app, status, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
@@ -124,6 +125,18 @@ The flags' help is the doc comments on `CommonArgs`, so `--db` does not name the
 default path; an application can restore that with
 `#[command(mut_arg("db", |a| a.help("...")))]` on its `Cli`. The application's `Cli` should set
 its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` description.
+
+### `sqlite`
+
+- `Schema { baseline, seed, chain, remedy }`: the frozen version-1 SQL, rows a new database starts
+  with, the `Migration { version, sql, data }` arms above it, and what else the owner can do with a
+  database this build will not migrate. `head()` is one plus the chain's length; `check_versions`
+  is for an application's test that each arm declares the version its position gives it.
+- `open(path, &schema)` creates the parent directory, turns on foreign keys and WAL, and migrates;
+  `open_in_memory(&schema)` is the same for tests, so each replays the whole chain.
+- `migrate` runs the chain in one transaction with foreign keys off, checks
+  `pragma_foreign_key_check` at the end, and refuses a database newer than the build.
+- `snapshot(src, dest)` is `VACUUM INTO` without migrating, for `backup` and `scratch::copy`.
 
 ### `tui`
 

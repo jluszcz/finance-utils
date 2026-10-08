@@ -9,7 +9,7 @@ cargo build --all-features
 cargo test --all-features
 cargo fmt                                                   # pre-commit runs `cargo fmt --check`
 cargo clippy --all-targets --all-features -- -D warnings    # CI treats warnings as errors
-for f in money config report backup scratch cli tui test-support; do cargo check --no-default-features --features $f || break; done
+for f in money config report backup scratch cli sqlite tui test-support; do cargo check --no-default-features --features $f || break; done
 ```
 
 ## What this is
@@ -30,8 +30,9 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 
 - `#![warn(missing_docs)]` plus `-D warnings`: every public item needs a doc comment. Document the
   *why* a caller cannot infer.
-- `rusqlite` is never a dependency: the applications own their databases, and `backup` takes the
-  snapshot as a closure.
+- `rusqlite` is named only in `src/sqlite.rs`, behind the `sqlite` feature. The applications own
+  their schemas and their queries; `sqlite` opens, migrates and snapshots. `backup` and `scratch`
+  still take the snapshot as a closure, so neither needs the feature.
 - `minify_html` is named only in `src/report.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
   and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
   only in `src/config.rs` and `src/backup/state.rs`.
