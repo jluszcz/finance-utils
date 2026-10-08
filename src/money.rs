@@ -81,6 +81,19 @@ impl Cents {
         let sign = if self.0 < 0 { "-" } else { "" };
         format!("{sign}{}", grouped(abs / 100))
     }
+
+    /// The `Display` figure with a dollar sign: `-$1,234.56`. Form fields
+    /// keep the bare `Display`, which parses back.
+    pub fn usd(self) -> String {
+        dollar_sign(&self.to_string())
+    }
+
+    /// Whole dollars with a dollar sign: `-$1,234`. The cents go first,
+    /// through [`Cents::trunc_to_dollar`], so a loss under a dollar reads `$0`
+    /// rather than `-$0`.
+    pub fn usd_whole(self) -> String {
+        dollar_sign(&self.trunc_to_dollar().to_whole_dollars())
+    }
 }
 
 /// A whole-dollar figure with thousands separators.
@@ -94,6 +107,18 @@ fn grouped(dollars: u64) -> String {
         out.push(ch);
     }
     out
+}
+
+/// `text` with a `$` after any leading minus: `-1,234.56` reads `-$1,234.56`.
+///
+/// Takes text rather than `Cents`, so a figure an application has already
+/// turned into digits its own way (scrambled for a demo, say) takes the sign
+/// the same way [`Cents::usd`] does.
+pub fn dollar_sign(text: &str) -> String {
+    match text.strip_prefix('-') {
+        Some(magnitude) => format!("-${magnitude}"),
+        None => format!("${text}"),
+    }
 }
 
 impl Add for Cents {
@@ -373,5 +398,26 @@ mod tests {
         assert_eq!(total, Cents(350));
         assert_eq!(total - Cents(400), Cents(-50));
         assert_eq!(-Cents(5), Cents(-5));
+    }
+
+    #[test]
+    fn a_dollar_sign_goes_after_a_minus_and_before_anything_else() {
+        assert_eq!(dollar_sign("1,234.56"), "$1,234.56");
+        assert_eq!(dollar_sign("-1,234.56"), "-$1,234.56");
+        assert_eq!(dollar_sign("0"), "$0");
+    }
+
+    #[test]
+    fn usd_is_the_display_figure_with_a_dollar_sign() {
+        assert_eq!(Cents(123_456).usd(), "$1,234.56");
+        assert_eq!(Cents(-123_456).usd(), "-$1,234.56");
+        assert_eq!(Cents(0).usd(), "$0.00");
+    }
+
+    #[test]
+    fn usd_whole_drops_the_cents_and_reads_a_loss_under_a_dollar_as_zero() {
+        assert_eq!(Cents(123_456).usd_whole(), "$1,234");
+        assert_eq!(Cents(-123_456).usd_whole(), "-$1,234");
+        assert_eq!(Cents(-40).usd_whole(), "$0");
     }
 }
