@@ -1,10 +1,11 @@
-//! Code shared by Paychecker and MisterManager, two local finance
-//! applications with the same shape: a ratatui front end over SQLite, an HTML
-//! page of the figures written on quit, and a scheduled S3 backup.
+//! Code shared by Paychecker, MisterManager and Funder, three local finance
+//! applications with the same shape: a ratatui front end over SQLite, a
+//! scheduled S3 backup, and (for the first two) an HTML page of the figures
+//! written on quit.
 //!
 //! Every feature is off by default. An application names itself once, as a
 //! `backup::Spec` and a report file name, and every path, key and profile
-//! that differs between the two is derived from that.
+//! that differs between them is derived from that.
 
 #![warn(missing_docs)]
 
@@ -31,7 +32,7 @@ pub mod tui;
 /// so a small file never reads as `0 KiB`, and whole MiB from one up.
 ///
 /// Integer arithmetic on purpose: a size to one decimal place is not worth
-/// the first float in either application.
+/// the first float in any application.
 pub fn human_bytes(bytes: u64) -> String {
     const MIB: u64 = 1024 * 1024;
     if bytes >= MIB {

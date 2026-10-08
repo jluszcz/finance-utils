@@ -1,11 +1,11 @@
-//! `Cents`, the only money type either application uses.
+//! `Cents`, the only money type any application uses.
 
 use std::fmt;
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Neg, Sub};
 use std::str::FromStr;
 
-/// A monetary amount in integer cents, the only money type either application uses.
+/// A monetary amount in integer cents, the only money type any application uses.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub struct Cents(
     /// The amount, in cents.

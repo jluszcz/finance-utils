@@ -2,10 +2,10 @@
 
 [![Status Badge](https://github.com/jluszcz/finance-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/jluszcz/finance-utils/actions/workflows/ci.yml)
 
-Code shared by Paychecker and MisterManager, two local finance applications with the same shape: a
-ratatui front end over SQLite, an HTML page of the figures written on quit, and a scheduled S3
-backup. An application names itself once, as a `backup::Spec` and a report file name, and every
-path, key and profile that differs between the two is derived from that.
+Code shared by Paychecker, MisterManager and Funder, three local finance applications with the
+same shape: a ratatui front end over SQLite, a scheduled S3 backup, and (for the first two) an HTML
+page of the figures written on quit. An application names itself once, as a `backup::Spec` and a
+report file name, and every path, key and profile that differs between them is derived from that.
 
 Every feature is off by default and additive:
 

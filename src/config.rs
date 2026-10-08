@@ -1,4 +1,4 @@
-//! The pieces of a configuration file both applications read, and the XDG
+//! The pieces of a configuration file every application reads, and the XDG
 //! paths the file and its sibling state live at.
 //!
 //! An absent file, or one missing a section, means that section's feature is

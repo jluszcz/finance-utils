@@ -3,7 +3,7 @@ name = "jluszcz_finance_utils"
 authors = ["Jacob Luszcz"]
 version = "0.1.0"
 edition = "2024"
-description = "Code shared by Paychecker and MisterManager: money, config, the HTML report, S3 backups, the common CLI flags, and TUI text editing."
+description = "Code shared by Paychecker, MisterManager and Funder: money, config, the HTML report, S3 backups, the common CLI flags, and TUI text editing."
 license = "MIT"
 repository = "https://github.com/jluszcz/finance-utils"
 
@@ -22,7 +22,7 @@ test-support = ["tui"]
 anyhow = "1.0"
 # ring rather than aws-lc: aws-sdk-s3's "rustls" feature is the ring-based
 # client, and aws-config's default aws-lc-based https client is left off
-# entirely rather than swapped. Both applications made this choice before the
+# entirely rather than swapped. The applications made this choice before the
 # code moved here, and it stays theirs.
 aws-config = { version = "1.10", default-features = false, features = ["behavior-version-latest", "rt-tokio"], optional = true }
 aws-sdk-s3 = { version = "1.142", default-features = false, features = ["behavior-version-latest", "rt-tokio", "rustls"], optional = true }
