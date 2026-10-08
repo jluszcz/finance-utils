@@ -20,3 +20,13 @@ updates:
           - "*"
     assignees:
       - "jluszcz"
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      all-pre-commit:
+        patterns:
+          - "*"
+    assignees:
+      - "jluszcz"
