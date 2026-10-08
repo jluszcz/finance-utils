@@ -47,8 +47,9 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   exported `AWS_ACCESS_KEY_ID` cannot substitute another identity.
 - No key prefix: `Spec::key_for` and each IAM policy's `<bucket arn>/*` would otherwise have to
   spell it identically, with `AccessDenied` as the only sign they drifted.
-- The schedule reads `Utc::now()`, never an application's simulated date, and callers run the
-  scheduled check only on their default database. An explicit backup command is exempt.
+- The schedule reads `Utc::now()`, never an application's simulated date, and the scheduled check
+  runs only on the default database, which `CommonArgs::scheduled_backup` enforces. An explicit
+  backup command is exempt.
 - The state file is advisory: unreadable means a warning and one redundant upload. It is written
   only after a successful upload, and the snapshot is removed on both paths.
 - The snapshot directory's leaf is created non-recursively with mode 0700; see

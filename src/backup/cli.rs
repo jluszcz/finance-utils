@@ -91,6 +91,37 @@ pub fn scheduled(
     }
 }
 
+/// The rules every binary puts around a backup, for one that takes the
+/// common flags.
+#[cfg(feature = "cli")]
+impl crate::cli::CommonArgs {
+    /// Refuse `--scratch` with the `backup` subcommand, before the copy is
+    /// made: a throwaway copy has nothing worth restoring, and an upload of
+    /// one would sit beside the real backups looking like one.
+    pub fn refuse_scratch_backup(&self) -> Result<()> {
+        anyhow::ensure!(
+            !self.scratch,
+            "--scratch cannot be backed up: drop the flag to back up the real database"
+        );
+        Ok(())
+    }
+
+    /// [`scheduled`], on the default database only: the state file records
+    /// when an upload last happened, not what was uploaded, so a `--db` or
+    /// `--scratch` run on the schedule would take the real database's turn.
+    pub fn scheduled_backup(
+        &self,
+        spec: &Spec,
+        db_path: &Path,
+        cfg: Option<&BackupConfig>,
+        snapshot: impl FnOnce(&Path, &Path) -> Result<()>,
+    ) {
+        if self.is_default_db() {
+            scheduled(spec, db_path, cfg, snapshot);
+        }
+    }
+}
+
 /// One line for what a run did.
 pub fn describe(outcome: &Outcome) -> String {
     match outcome {
@@ -143,6 +174,57 @@ fn read_state(path: &Path) -> Option<State> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "cli")]
+    #[test]
+    fn scratch_is_refused_for_a_backup_and_nothing_else_is() {
+        use crate::cli::CommonArgs;
+        let scratch = CommonArgs {
+            scratch: true,
+            ..CommonArgs::default()
+        };
+        let err = scratch.refuse_scratch_backup().unwrap_err();
+        assert!(
+            err.to_string().contains("--scratch cannot be backed up"),
+            "{err}"
+        );
+        let db = CommonArgs {
+            db: Some("/tmp/other.db".into()),
+            ..CommonArgs::default()
+        };
+        db.refuse_scratch_backup().unwrap();
+    }
+
+    #[cfg(feature = "cli")]
+    #[test]
+    fn a_run_on_another_database_never_takes_the_scheduled_backup() {
+        use crate::cli::CommonArgs;
+        let cfg = BackupConfig {
+            bucket: "a-bucket".into(),
+            profile: None,
+            interval_days: 7,
+        };
+        for args in [
+            CommonArgs {
+                db: Some("/tmp/other.db".into()),
+                ..CommonArgs::default()
+            },
+            CommonArgs {
+                scratch: true,
+                ..CommonArgs::default()
+            },
+        ] {
+            args.scheduled_backup(
+                &Spec {
+                    app: "an-app",
+                    stem: "an-app",
+                },
+                Path::new("/tmp/other.db"),
+                Some(&cfg),
+                |_, _| panic!("a non-default database was snapshotted for the schedule"),
+            );
+        }
+    }
     use chrono::{DateTime, TimeZone};
 
     const SPEC: Spec = Spec {
