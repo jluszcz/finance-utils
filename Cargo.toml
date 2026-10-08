@@ -10,7 +10,7 @@ repository = "https://github.com/jluszcz/finance-utils"
 [features]
 money = ["dep:thiserror"]
 config = ["dep:serde", "dep:toml"]
-report = ["config", "dep:chrono", "dep:minify-html"]
+report = ["config", "dep:chrono", "dep:clap", "dep:minify-html"]
 backup = ["config", "dep:chrono", "chrono/serde", "dep:clap", "dep:aws-config", "dep:aws-sdk-s3", "dep:aws-smithy-types", "dep:tokio", "dep:zstd"]
 scratch = ["dep:chrono"]
 cli = ["config", "scratch", "dep:chrono", "dep:clap"]
