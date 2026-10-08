@@ -28,6 +28,13 @@ pub struct CommonArgs {
 }
 
 impl CommonArgs {
+    /// The directory a `--scratch` copy sits in, where that run writes what
+    /// it would otherwise write beside the real database. `None` for any
+    /// other run.
+    pub fn scratch_dir(&self, db: &Path) -> Option<PathBuf> {
+        db.parent().filter(|_| self.scratch).map(Path::to_path_buf)
+    }
+
     /// Whether this run is on the default database, the only one the backup
     /// schedule belongs to: a `--db` or a `--scratch` copy would otherwise
     /// take the real database's turn.
@@ -78,6 +85,7 @@ impl CommonArgs {
 mod tests {
     use super::CommonArgs;
     use clap::Parser;
+    use std::path::{Path, PathBuf};
 
     #[derive(Parser)]
     struct Cli {
@@ -117,6 +125,21 @@ mod tests {
         assert!(cli.common.is_scratch_session());
         assert!(!cli.common.is_default_db());
         assert!(matches!(cli.command, Some(Sub::Run)));
+    }
+
+    #[test]
+    fn a_scratch_run_names_the_directory_its_copy_sits_in() {
+        let cli = parse(&["--scratch"]).unwrap();
+        assert_eq!(
+            cli.common.scratch_dir(Path::new("/tmp/copy/app.db")),
+            Some(PathBuf::from("/tmp/copy"))
+        );
+    }
+
+    #[test]
+    fn a_run_that_is_not_scratch_has_no_scratch_directory() {
+        let cli = parse(&["--db", "/tmp/given/app.db"]).unwrap();
+        assert_eq!(cli.common.scratch_dir(Path::new("/tmp/given/app.db")), None);
     }
 
     #[test]

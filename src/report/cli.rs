@@ -61,6 +61,26 @@ pub fn after_quit(result: Result<Outcome>) {
     }
 }
 
+/// The page a quit writes. `skip` wins over everything: it is the
+/// application's rule for a run whose page must exist nowhere, such as a demo.
+/// Otherwise a `--scratch` run writes into its own directory whatever the
+/// config says, since the directory is fresh and the page is there to be
+/// compared with the real one. Every other quit is `configured`'s decision.
+pub fn on_quit(
+    skip: bool,
+    scratch_dir: Option<&Path>,
+    write: impl FnOnce(&Path) -> Result<Written>,
+    configured: impl FnOnce() -> Result<Outcome>,
+) -> Result<Outcome> {
+    if skip {
+        return Ok(Outcome::Skipped);
+    }
+    match scratch_dir {
+        Some(dir) => write(dir).map(Outcome::Written),
+        None => configured(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,5 +137,50 @@ mod tests {
             bytes: 2048,
         };
         assert_eq!(describe(&written), "wrote 2 KiB to /out/Report.html");
+    }
+
+    fn written_into(dir: &Path) -> Result<Written> {
+        Ok(Written {
+            path: dir.join("Report.html"),
+            bytes: 1,
+        })
+    }
+
+    #[test]
+    fn a_scratch_quit_writes_into_its_own_directory_and_never_asks_the_config() {
+        let outcome = on_quit(false, Some(Path::new("/scratch")), written_into, || {
+            panic!("the configured page was consulted on a scratch run")
+        })
+        .unwrap();
+        assert!(
+            matches!(&outcome, Outcome::Written(w) if w.path == Path::new("/scratch/Report.html")),
+            "{outcome:?}"
+        );
+    }
+
+    #[test]
+    fn any_other_quit_is_the_configured_pages_decision() {
+        let outcome = on_quit(
+            false,
+            None,
+            |_| panic!("wrote into a scratch directory"),
+            || Ok(Outcome::Disabled),
+        )
+        .unwrap();
+        assert!(matches!(outcome, Outcome::Disabled), "{outcome:?}");
+    }
+
+    /// A demo run's page would carry the figures the demo exists to hide, so
+    /// a skip wins over a scratch directory as well as over the config.
+    #[test]
+    fn a_skipped_quit_writes_nothing_even_into_a_scratch_directory() {
+        let outcome = on_quit(
+            true,
+            Some(Path::new("/scratch")),
+            |_| panic!("a skipped quit wrote a page"),
+            || panic!("a skipped quit consulted the config"),
+        )
+        .unwrap();
+        assert!(matches!(outcome, Outcome::Skipped), "{outcome:?}");
     }
 }
