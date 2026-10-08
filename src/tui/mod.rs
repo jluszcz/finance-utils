@@ -3,6 +3,7 @@
 pub mod app;
 pub mod date;
 pub mod help;
+pub mod status;
 #[cfg(feature = "test-support")]
 pub mod testing;
 pub mod text;

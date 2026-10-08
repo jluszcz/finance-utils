@@ -22,7 +22,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
-| `tui` | `tui::{centered, is_press, app, text, date, help}` | `ratatui`, `chrono` |
+| `tui` | `tui::{centered, is_press, app, status, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -132,6 +132,9 @@ its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` descr
   the `App` back on quit. It draws only when a key press, a resize, an expired status message
   (`expire_status`) or deferred work (`run_deferred`, which defaults to none) changed something,
   and checks for expiry every quarter second.
+- `status::StatusLine`: the footer's message, error or not. With no modal open it lasts until the
+  next key or `status::TTL` (four seconds); under a modal, until the modal closes. The application
+  brackets each key with `begin_key`/`end_key` and passes whether a modal is open.
 - `text::{TextBuffer, Edit, edit_key, is_bare}`: a line of text with a caret, and the Ctrl-key
   editing shared by every text box. `TextBuffer` has `value`, `caret`, `len`, `is_empty`, `set`,
   `clear`, `insert`, `backspace`, `delete`, `step`, `start`, `end`, `delete_word_back`,
