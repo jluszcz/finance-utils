@@ -25,8 +25,12 @@ pub mod report;
 pub mod scratch;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
+mod text_enum;
 #[cfg(feature = "tui")]
 pub mod tui;
+
+#[doc(hidden)]
+pub use anyhow as __anyhow;
 
 /// A size for a person to read in a one-line message: whole KiB, rounded up
 /// so a small file never reads as `0 KiB`, and whole MiB from one up.
