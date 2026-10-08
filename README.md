@@ -18,7 +18,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | *(always)* | `human_bytes` | `anyhow` |
 | `money` | `money::{Cents, ParseMoneyError}` | `thiserror` |
 | `config` | `config::{default_path, state_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
-| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome}` | `config`, `chrono`, `minify-html` |
+| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, cli}` | `config`, `chrono`, `clap`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
@@ -71,6 +71,11 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
   written today and no rows were, else `Written`. `render` runs only when a page will be written.
 - `escape(text) -> String`: `&`, `<`, `>`, `"`.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.
+- `cli::ReportArgs` (`--dir`), flattened into an application's `report` subcommand;
+  `cli::dir(args, scratch_dir, cfg, config_path)` picks `--dir`, then a scratch run's directory,
+  then `[report] dir`, and with none is an error naming the config file. `cli::describe(&Written)`
+  is the `wrote 12 KiB to …` line; `cli::after_quit(result)` prints it, warns on an error, and is
+  silent otherwise.
 
 ### `backup`
 

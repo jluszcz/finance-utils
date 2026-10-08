@@ -33,7 +33,7 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 - `rusqlite` is named only in `src/sqlite.rs`, behind the `sqlite` feature. The applications own
   their schemas and their queries; `sqlite` opens, migrates and snapshots. `backup` and `scratch`
   still take the snapshot as a closure, so neither needs the feature.
-- `minify_html` is named only in `src/report.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
+- `minify_html` is named only in `src/report/mod.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
   and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
   only in `src/config.rs` and `src/backup/state.rs`.
 - AWS crates take `default-features = false` and ring-based rustls (see `Cargo.toml`).
