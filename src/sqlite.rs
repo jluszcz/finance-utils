@@ -10,6 +10,50 @@ use anyhow::{Context, Result};
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use std::path::Path;
 
+#[doc(hidden)]
+pub use rusqlite as __rusqlite;
+
+/// A row id type for one table: `row_id!(AccountId, "account")`. Every id
+/// being an `i64` would let any of them pass where any other belongs, and a
+/// fresh table's first row is id 1 in all of them, so a mix-up returns a
+/// plausible row rather than failing.
+///
+/// Binds and reads as its integer, and displays as the bare number so it reads
+/// the same in an error as in the database. Expands to `rusqlite` through
+/// this module, so the caller's own code never names it.
+#[macro_export]
+macro_rules! row_id {
+    ($name:ident, $table:literal) => {
+        #[doc = concat!("A `", $table, "` row id.")]
+        #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        pub struct $name(pub i64);
+
+        impl $crate::sqlite::__rusqlite::ToSql for $name {
+            fn to_sql(
+                &self,
+            ) -> $crate::sqlite::__rusqlite::Result<
+                $crate::sqlite::__rusqlite::types::ToSqlOutput<'_>,
+            > {
+                Ok($crate::sqlite::__rusqlite::types::ToSqlOutput::from(self.0))
+            }
+        }
+
+        impl $crate::sqlite::__rusqlite::types::FromSql for $name {
+            fn column_result(
+                value: $crate::sqlite::__rusqlite::types::ValueRef<'_>,
+            ) -> $crate::sqlite::__rusqlite::types::FromSqlResult<Self> {
+                <i64 as $crate::sqlite::__rusqlite::types::FromSql>::column_result(value).map($name)
+            }
+        }
+
+        impl ::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+
 /// One edit to the schema, and the version it leaves a database at.
 ///
 /// An arm names the schema as it stood when the arm was written, and must
@@ -214,6 +258,33 @@ fn or_remedy(schema: &Schema) -> String {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+
+    crate::row_id!(WidgetId, "widget");
+
+    #[test]
+    fn a_row_id_round_trips_through_sqlite_as_its_integer() {
+        let conn = Connection::open_in_memory().unwrap();
+        let back: WidgetId = conn
+            .query_row("SELECT ?1", [WidgetId(42)], |r| r.get(0))
+            .unwrap();
+        assert_eq!(back, WidgetId(42));
+        let raw: i64 = conn
+            .query_row("SELECT ?1", [WidgetId(42)], |r| r.get(0))
+            .unwrap();
+        assert_eq!(raw, 42);
+    }
+
+    #[test]
+    fn a_null_where_a_row_id_belongs_is_an_error_rather_than_a_zero() {
+        let conn = Connection::open_in_memory().unwrap();
+        let read: rusqlite::Result<WidgetId> = conn.query_row("SELECT NULL", [], |r| r.get(0));
+        assert!(read.is_err());
+    }
+
+    #[test]
+    fn a_row_id_displays_as_the_bare_number() {
+        assert_eq!(WidgetId(7).to_string(), "7");
+    }
 
     const BASELINE: &str = "CREATE TABLE t (a INTEGER)";
 
