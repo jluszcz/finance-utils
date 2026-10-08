@@ -15,20 +15,28 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 
 | Feature | Adds | Dependencies |
 |---|---|---|
-| *(always)* | `human_bytes` | `anyhow` |
-| `money` | `money::{Cents, ParseMoneyError}` | `thiserror` |
+| *(always)* | `human_bytes`, `text_enum!` | `anyhow` |
+| `money` | `money::{Cents, ParseMoneyError, dollar_sign}` | `thiserror` |
 | `config` | `config::{default_path, state_path, data_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
-| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, cli}` | `config`, `chrono`, `clap`, `minify-html` |
+| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, html, cli}` | `config`, `chrono`, `clap`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
-| `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
-| `sqlite` | `sqlite::{open, open_in_memory, migrate, snapshot, Schema, Migration}` | `rusqlite` (bundled) |
-| `tui` | `tui::{centered, is_press, app, status, text, date, help}` | `ratatui`, `chrono` |
-| `test-support` | `tui::testing` | `tui` |
+| `cli` | `cli::{CommonArgs, name_defaults, parse}` | `config`, `scratch`, `chrono`, `clap` |
+| `sqlite` | `sqlite::{open, open_in_memory, migrate, snapshot, Schema, Migration, row_id!}` | `rusqlite` (bundled) |
+| `tui` | `tui::{centered, is_press, step_index, next_in, app, status, text, date, help}` | `ratatui`, `chrono` |
+| `test-support` | `testing`, `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
 
 `human_bytes(bytes: u64) -> String`: whole KiB rounded up below a MiB, whole MiB from one up.
+
+### `text_enum!` (always)
+
+`text_enum!` generates what an enum behind a `TEXT` column needs from one list of variants: `ALL`,
+`as_str` (the stored token), `index` (a variant's place in `ALL`) and `FromStr`, which searches
+`ALL` through `as_str`. Its noun names the column in the refusal for an unknown token. A display
+label is not generated, since it is prose free to change without a migration. The enum derives
+`Copy` and `PartialEq`.
 
 ### `money`
 
@@ -36,6 +44,9 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 
 - `Cents::ZERO`, `from_dollars`, `dollars` (floors), `floor_to_dollar`, `trunc_to_dollar`,
   `ceil_to_hundred_dollars` (saturating), `to_whole_dollars`.
+- `usd` is `Display` with a dollar sign (`-$1,234.56`); `usd_whole` drops the cents first, so a
+  loss under a dollar reads `$0`. `money::dollar_sign(text)` puts the `$` after any leading minus
+  of text already formatted, for a figure an application has turned into digits its own way.
 - `Add`, `Sub`, `Neg`, `AddAssign`, `Sum`.
 - `Display`: `$` omitted, thousands grouped, two decimals, sign before the digits.
 - `FromStr`: strips `$`, `,`, `_` and spaces; one optional leading `-`; at most two decimals; `.5`
@@ -72,12 +83,19 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
   `Disabled` with no section, `Skipped` when the caller says `skip`, `Unchanged` when the page was
   written today and no rows were, else `Written`. `render` runs only when a page will be written.
 - `escape(text) -> String`: `&`, `<`, `>`, `"`.
+- `html`: the page around the figures and a tab bar switched by CSS alone, so the page carries no
+  script. `Tab::new(id, label)`; `tab_inputs(tabs, open)` are the radios, which go ahead of the nav
+  and every panel; `tab_nav(tabs)` is the bar; `tab_rules(tabs)` is the CSS showing the open
+  panel (`<id>-panel`), lighting its label and placing the focus ring; `page(title, style, body,
+  stamp)` is the document, with the footer stamp.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.
 - `cli::ReportArgs` (`--dir`), flattened into an application's `report` subcommand;
   `cli::dir(args, scratch_dir, cfg, config_path)` picks `--dir`, then a scratch run's directory,
   then `[report] dir`, and with none is an error naming the config file. `cli::describe(&Written)`
   is the `wrote 12 KiB to …` line; `cli::after_quit(result)` prints it, warns on an error, and is
-  silent otherwise.
+  silent otherwise. `cli::on_quit(skip, scratch_dir, write, configured)` decides the page a quit
+  writes: none when `skip`, a `--scratch` run's own directory when there is one, else
+  `configured`'s decision.
 
 ### `backup`
 
@@ -131,10 +149,16 @@ application's default, and `today_or_local` is `--today` or the local date. `is_
 says the run is on another database or another day; it is also true for `--today` alone, so it is
 not the complement of `is_default_db`.
 
-The flags' help is the doc comments on `CommonArgs`, so `--db` does not name the application's
-default path; an application can restore that with
-`#[command(mut_arg("db", |a| a.help("...")))]` on its `Cli`. The application's `Cli` should set
-its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` description.
+`scratch_dir(db)` is the directory a `--scratch` copy sits in, where that run writes what it would
+otherwise write beside the real database, and `None` for any other run.
+
+The flags' help would otherwise be the doc comments on `CommonArgs`, so `--db` would not name the
+application's default path. `name_defaults(cmd, app, db_file, writes_report)` rewrites the help of
+`--db`, `--config` and `--scratch` to say where this application's files are, written as `~/...`
+because help is read on machines with other homes; `writes_report` adds where a scratch run's page
+goes. `parse::<Cli>(app, db_file, writes_report)` is `Cli::parse()` with it applied. Both panic
+when the `Cli` does not flatten `CommonArgs`. The application's `Cli` should set its own `about`:
+otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 
 ### `sqlite`
 
@@ -147,10 +171,16 @@ its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` descr
 - `migrate` runs the chain in one transaction with foreign keys off, checks
   `pragma_foreign_key_check` at the end, and refuses a database newer than the build.
 - `snapshot(src, dest)` is `VACUUM INTO` without migrating, for `backup` and `scratch::copy`.
+- `row_id!(AccountId, "account")` defines a typed id for one table, so ids of different tables
+  cannot stand in for one another. It binds and reads as its `i64`, displays as the bare number, and
+  expands to `rusqlite` through this module, so the caller never names it.
 
 ### `tui`
 
 - `centered(area, width, height) -> Rect` and `is_press(&KeyEvent) -> bool`.
+- `step_index(index, len, step)` steps through `len` choices, wrapping, and stays at zero for an
+  empty list; `next_in(order, focus, step)` is the same around a form's tab order over its field
+  enum, counting from the first when `focus` is not in `order`, and panicking on an empty `order`.
 - `app::{App, run}`: `run` owns the terminal and the loop that draws and reads keys, and hands
   the `App` back on quit. It draws only when a key press, a resize, an expired status message
   (`expire_status`) or deferred work (`run_deferred`, which defaults to none) changed something,
@@ -164,7 +194,10 @@ its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` descr
   `kill_to_start` and `kill_to_end`.
 - `date::{iso, parse_shorthand, parse, Step}`: `iso` formats `YYYY-MM-DD`; `parse_shorthand`
   resolves `M/D` against a reference day, where the year turns on the month alone. `date::parse`
-  reads `YYYY-MM-DD` or `M/D`; `date::Step` is what `←`/`→` (a day), `Shift` with them (a week),
+  reads `YYYY-MM-DD` or `M/D`; `date::normalized` writes a date out as `YYYY-MM-DD`
+  and is `None` for text that is not one; `resolved` is that only when it differs from what was
+  typed; `stepped(raw, today, step)` nudges a date already there and is `None` otherwise;
+  `parse_opt` is `parse` where blank is `Ok(None)`. `date::Step` is what `←`/`→` (a day), `Shift` with them (a week),
   and `[`/`]` (a month) do to a date field, via `Step::from_key`.
 - `help::Entry` tables, each entry's footer `Label`, drive both the footer (`footer_items`, joined
   by the application) and the `?` panel (`render_panel`); `duplicate_keys` finds keys a table
@@ -172,8 +205,14 @@ its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` descr
 
 ### `test-support`
 
-`tui::testing::{key, shift, ctrl, draw_buffer, draw, buffer_text}`, for an application's TUI tests.
-Enable it from `[dev-dependencies]` only.
+- `testing::{day, unreachable_aws}`: `day(y, m, d)` is a `NaiveDate` that panics on one that does
+  not exist; `unreachable_aws(&mut Command)` gives a child process an AWS environment that reaches
+  nothing, for a test of a backup command that must fail before uploading.
+- `tui::testing::{key, shift, ctrl, draw_buffer, draw, buffer_text, press, type_text, screen,
+  inside}`: `press` and `type_text` feed an `App` keys, `screen` draws it at a size, and `inside`
+  is the rows inside a bordered screen, the border's sides and trailing spaces removed.
+
+For an application's tests. Enable it from `[dev-dependencies]` only.
 
 ## Development
 

@@ -67,6 +67,10 @@ pub fn screen<A: App>(app: &mut A, width: u16, height: u16) -> String {
 /// The rows inside a bordered screen: the border's sides removed and
 /// trailing spaces trimmed. The top border (which carries the title) and the
 /// last two rows (the bottom border and the footer under it) are dropped.
+///
+/// # Panics
+///
+/// On text of fewer than three rows: it expects a bordered screen.
 pub fn inside(text: &str) -> Vec<String> {
     let lines: Vec<&str> = text.lines().collect();
     lines[1..lines.len().saturating_sub(2)]
