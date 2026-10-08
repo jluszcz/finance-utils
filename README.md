@@ -22,7 +22,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::CommonArgs` | `config`, `scratch`, `chrono`, `clap` |
-| `tui` | `tui::{centered, is_press, text, date, help}` | `ratatui`, `chrono` |
+| `tui` | `tui::{centered, is_press, app, text, date, help}` | `ratatui`, `chrono` |
 | `test-support` | `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -128,6 +128,10 @@ its own `about`: otherwise `CommonArgs`'s doc comment becomes the `--help` descr
 ### `tui`
 
 - `centered(area, width, height) -> Rect` and `is_press(&KeyEvent) -> bool`.
+- `app::{App, run}`: `run` owns the terminal and the loop that draws and reads keys, and hands
+  the `App` back on quit. It draws only when a key press, a resize, an expired status message
+  (`expire_status`) or deferred work (`run_deferred`, which defaults to none) changed something,
+  and checks for expiry every quarter second.
 - `text::{TextBuffer, Edit, edit_key, is_bare}`: a line of text with a caret, and the Ctrl-key
   editing shared by every text box. `TextBuffer` has `value`, `caret`, `len`, `is_empty`, `set`,
   `clear`, `insert`, `backspace`, `delete`, `step`, `start`, `end`, `delete_word_back`,
