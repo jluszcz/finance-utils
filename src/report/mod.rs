@@ -1,6 +1,7 @@
 //! Writing an HTML page to a synced directory: minified, atomically, and only when it is due.
 
 pub mod cli;
+pub mod html;
 
 use crate::config::ReportConfig;
 use anyhow::{Context, Result};
