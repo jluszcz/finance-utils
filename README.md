@@ -17,7 +17,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 |---|---|---|
 | *(always)* | `human_bytes` | `anyhow` |
 | `money` | `money::{Cents, ParseMoneyError}` | `thiserror` |
-| `config` | `config::{default_path, state_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
+| `config` | `config::{default_path, state_path, data_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
 | `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, cli}` | `config`, `chrono`, `clap`, `minify-html` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
@@ -46,6 +46,8 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 - `default_path(app) -> Result<PathBuf>`: `$XDG_CONFIG_HOME/<app>/config.toml`, or `~/.config`
   when unset or empty.
 - `state_path(app, file) -> Result<PathBuf>`: `$XDG_STATE_HOME/<app>/<file>`, or `~/.local/state`.
+- `data_path(app, file) -> Result<PathBuf>`: `~/.local/share/<app>/<file>`, the database's home.
+  Fixed under `$HOME`; `$XDG_DATA_HOME` does not move it.
 - `load<T: DeserializeOwned + Default>(path) -> Result<T>`: a missing file is `T::default()`; a
   file that does not parse is an error naming the path.
 - `ReportConfig { dir }`: `new(dir)`, and `dir()` expands a leading `~` or `~/` and refuses a
@@ -86,8 +88,8 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
 - `is_due(last, now, interval_days)` and `next_due(last, interval_days)`; `interval_days` is
   clamped to ten years before it reaches `TimeDelta::days`.
 - `run_if_due(spec, db_path, cfg, state_path, now, force, snapshot) -> Result<Outcome>`, where
-  `snapshot` copies the database at the first path to the second. The caller supplies it, so the
-  crate never depends on `rusqlite`. The snapshot is zstd-compressed before upload, so the key
+  `snapshot` copies the database at the first path to the second. The caller supplies it
+  (`sqlite::snapshot` fits), so `backup` needs no `sqlite` feature. The snapshot is zstd-compressed before upload, so the key
   ends `.db.zst` and a restore runs `zstd -d` on the download.
 - `Outcome { Disabled, NotDue { next }, BackedUp { bucket, key, bytes } }`; `bytes` is the
   compressed size.
@@ -103,9 +105,12 @@ directory derive from `app`; the object key and snapshot file name from `stem`.
     prints to stdout only when it uploaded, and a failure goes to stderr.
   - `describe(&Outcome) -> String` and `status(spec, cfg, state) -> String` build the text the two
     print.
+  - With `cli` on too, `CommonArgs::refuse_scratch_backup()` refuses `--scratch` with the
+    `backup` subcommand, and `CommonArgs::scheduled_backup(spec, db_path, cfg, snapshot)` is
+    `scheduled` on the default database only.
 
-Neither `command` nor `scheduled` opens the database. The caller runs the scheduled check only on
-its default database. The IAM policy and bucket stay in each application's Terraform, which must
+Neither `command` nor `scheduled` opens the database. The scheduled check belongs to the default
+database alone, which `scheduled_backup` enforces. The IAM policy and bucket stay in each application's Terraform, which must
 allow `PutObject` only, and only with `If-None-Match`.
 
 ### `scratch`
