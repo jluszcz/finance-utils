@@ -91,6 +91,11 @@ const SCRATCH_HELP: &str = "Run against a copy of the default database in a fres
 /// application's own files are. The paths are written as `~/...` rather than
 /// resolved, because help is read on machines with other homes and other XDG
 /// settings. `writes_report` adds where a scratch run's page goes.
+///
+/// # Panics
+///
+/// When `cmd` does not flatten [`CommonArgs`]: clap's `mut_arg` panics on an
+/// argument that does not exist.
 pub fn name_defaults(
     cmd: clap::Command,
     app: &str,
@@ -121,6 +126,10 @@ pub fn name_defaults(
 /// The process's arguments parsed into `T` with [`name_defaults`] applied:
 /// `T::parse()` for a `Cli` that flattens [`CommonArgs`]. An error prints
 /// clap's usage message and exits exactly as `T::parse()` would.
+///
+/// # Panics
+///
+/// When `T` does not flatten [`CommonArgs`], as [`name_defaults`] does.
 pub fn parse<T: clap::Parser>(app: &str, db_file: &str, writes_report: bool) -> T {
     let mut cmd = name_defaults(T::command(), app, db_file, writes_report);
     let matches = cmd.get_matches_mut();
