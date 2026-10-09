@@ -25,6 +25,8 @@ pub mod report;
 pub mod scratch;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
+#[cfg(feature = "test-support")]
+pub mod testing;
 mod text_enum;
 #[cfg(feature = "tui")]
 pub mod tui;
