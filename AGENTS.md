@@ -39,7 +39,7 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   only in `src/config.rs` and `src/backup/state.rs`.
 - `text_enum!` and `row_id!` are `#[macro_export]`ed, so they sit at the crate root; they reach their
   dependencies through `$crate` re-exports, so an application needs neither crate named to use them.
-- AWS crates take `default-features = false` and ring-based rustls (see `Cargo.toml`).
+- AWS crates take `default-features = false`; aws-sdk-s3 uses `default-https-client` (rustls 0.23), not the legacy `rustls` feature (see `Cargo.toml`).
 
 ## Backup invariants
 
