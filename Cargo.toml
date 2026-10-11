@@ -20,12 +20,12 @@ test-support = ["tui"]
 
 [dependencies]
 anyhow = "1.0"
-# ring rather than aws-lc: aws-sdk-s3's "rustls" feature is the ring-based
-# client, and aws-config's default aws-lc-based https client is left off
-# entirely rather than swapped. The applications made this choice before the
-# code moved here, and it stays theirs.
+# `default-https-client` is the rustls 0.23 stack; the SDK's `rustls` feature is the
+# legacy hyper-0.14 client (rustls 0.21 / rustls-webpki 0.101), which no longer
+# receives security fixes. aws-config's own https client is left off entirely
+# rather than swapped.
 aws-config = { version = "1.10", default-features = false, features = ["behavior-version-latest", "rt-tokio"], optional = true }
-aws-sdk-s3 = { version = "1.142", default-features = false, features = ["behavior-version-latest", "rt-tokio", "rustls"], optional = true }
+aws-sdk-s3 = { version = "1.142", default-features = false, features = ["behavior-version-latest", "rt-tokio", "default-https-client"], optional = true }
 aws-smithy-types = { version = "1.6", optional = true }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"], optional = true }
 clap = { version = "4.6", features = ["derive"], optional = true }
