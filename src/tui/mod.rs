@@ -1,8 +1,11 @@
 //! Pieces of a ratatui front end every application draws the same way.
 
 pub mod app;
+pub mod cursor;
 pub mod date;
 pub mod help;
+#[cfg(feature = "money")]
+pub mod search;
 pub mod status;
 #[cfg(feature = "test-support")]
 pub mod testing;

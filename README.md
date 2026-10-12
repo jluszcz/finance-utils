@@ -23,7 +23,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::{CommonArgs, name_defaults, parse}` | `config`, `scratch`, `chrono`, `clap` |
 | `sqlite` | `sqlite::{open, open_in_memory, migrate, snapshot, Schema, Migration, row_id!}` | `rusqlite` (bundled) |
-| `tui` | `tui::{centered, is_press, step_index, next_in, app, status, text, date, help}` | `ratatui`, `chrono` |
+| `tui` | `tui::{centered, is_press, step_index, next_in, app, status, text, date, help, cursor}`, `impl_scroll!`; `tui::search` with `money` too | `ratatui`, `chrono` |
 | `test-support` | `testing`, `tui::testing` | `tui` |
 
 ### `human_bytes` (always)
@@ -202,6 +202,20 @@ otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 - `help::Entry` tables, each entry's footer `Label`, drive both the footer (`footer_items`, joined
   by the application) and the `?` panel (`render_panel`); `duplicate_keys` finds keys a table
   binds twice.
+- `cursor::{Cursor, Scroll, scroll_key, Viewport, Selection, viewport_offset}`: a list cursor that
+  never holds the rows, so one serves a filtered view whose length changes under it. A screen
+  implements `Scroll` (its cursor and its row count; `impl_scroll!(Screen, rows_field)` writes
+  that), and `scroll_key` answers `↑`/`↓`/`Home`/`End`/`PageUp`/`PageDown` the same on every list.
+  The draw hands back a `Viewport`, its height and first row; `viewport_offset` holds the view
+  still until the cursor is within three rows of an edge, and `Selection`'s `context` and `tail`
+  bring rows the cursor cannot rest on into view with it.
+- `search::{SearchBox, Search, search_key, escape_kept_filter, Matcher, searchable_amount}`, with
+  `money` as well: the `/` box. A screen implements `Search` (its box and `refilter`, called after
+  every change to the needle); `search_key` answers the box's keys, where `Enter` keeps the filter
+  and `Esc` abandons it, and `escape_kept_filter` lets `Esc` outside the box clear a kept one.
+  `Matcher` is case-insensitive substring matching over a row's text and the amounts it offers,
+  written without separators (`searchable_amount`). Drawing the needle is the application's:
+  `SearchBox::caret` says where the caret goes.
 
 ### `test-support`
 
