@@ -86,8 +86,9 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
 - `html`: the page around the figures and a tab bar switched by CSS alone, so the page carries no
   script. `Tab::new(id, label)`; `tab_inputs(tabs, open)` are the radios, which go ahead of the nav
   and every panel; `tab_nav(tabs)` is the bar; `tab_rules(tabs)` is the CSS showing the open
-  panel (`<id>-panel`), lighting its label and placing the focus ring; `page(title, style, body,
-  stamp)` is the document, with the footer stamp.
+  panel (`<id>-panel`), lighting its label and placing the focus ring; `page(title, icon, style,
+  body, stamp)` is the document, with the footer stamp and, given an `icon` glyph, an inline
+  favicon.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.
 - `cli::ReportArgs` (`--dir`), flattened into an application's `report` subcommand;
   `cli::dir(args, scratch_dir, cfg, config_path)` picks `--dir`, then a scratch run's directory,
