@@ -324,4 +324,33 @@ mod tests {
         assert!(out.contains("v\\u003c"), "{out}");
         assert!(out.contains("dataset.ok"), "{out}");
     }
+
+    #[test]
+    fn minified_shell_script_keeps_what_it_depends_on() {
+        let tabs = vec![html::NavTab::new("a", "A"), html::NavTab::new("b", "B")];
+        let panels = vec![String::new(), String::new()];
+        let page = html::app_page(&html::App {
+            title: "T",
+            favicon: None,
+            style: "",
+            tabs: &tabs,
+            open: 0,
+            panels: &panels,
+            data: None,
+            script: None,
+            stamp: "",
+        });
+        let out = String::from_utf8(minify(&page)).unwrap();
+        for needle in [
+            "addEventListener(`click`",
+            "`nav.tabs`",
+            "`button[data-t]`",
+            "`aria-selected`",
+            "`-panel`",
+            "panel.hidden=",
+            "scrollTo(0,0)",
+        ] {
+            assert!(out.contains(needle), "minified shell lost {needle}: {out}");
+        }
+    }
 }
