@@ -83,6 +83,146 @@ pub fn page(title: &str, icon: Option<&str>, style: &str, body: &str, stamp: &st
     )
 }
 
+/// The shell's own stylesheet: the base tokens, the page frame and both
+/// tab-bar forms, with no table metrics, which are each application's.
+const SHELL_CSS: &str = include_str!("shell.css");
+
+/// The shell's own script: switching panels on a tab click. Plain ES2020.
+const SHELL_JS: &str = include_str!("shell.js");
+
+/// One tab of a script-capable page.
+pub struct NavTab {
+    /// Names the tab's `data-t` and its panel, `<id>-panel`.
+    pub id: String,
+    /// What the bar shows above the breakpoint. Escaped on the way out.
+    pub label: String,
+    /// What the bottom bar shows under its icon, when `label` is too long for
+    /// it. Escaped on the way out.
+    pub short: Option<String>,
+    /// The inside of a 24x24 `<svg>`, stroked in the text color. The caller's
+    /// own markup. A bar draws the icon form only when every tab has one.
+    pub icon: Option<&'static str>,
+}
+
+impl NavTab {
+    /// A tab with `id`, shown as `label`.
+    pub fn new(id: impl Into<String>, label: impl Into<String>) -> NavTab {
+        NavTab {
+            id: id.into(),
+            label: label.into(),
+            short: None,
+            icon: None,
+        }
+    }
+
+    /// The label the narrow bar uses instead of `label`.
+    pub fn short(mut self, short: impl Into<String>) -> NavTab {
+        self.short = Some(short.into());
+        self
+    }
+
+    /// The icon, as the inside of its `<svg>`.
+    pub fn icon(mut self, svg_inner: &'static str) -> NavTab {
+        self.icon = Some(svg_inner);
+        self
+    }
+}
+
+/// Everything [`app_page`] draws a page from.
+pub struct App<'a> {
+    /// The document title. Escaped.
+    pub title: &'a str,
+    /// A favicon glyph, drawn by [`icon_link`].
+    pub favicon: Option<&'a str>,
+    /// The application's own CSS, appended after the shell's.
+    pub style: &'a str,
+    /// The tabs, in bar order.
+    pub tabs: &'a [NavTab],
+    /// The index of the tab shown first.
+    pub open: usize,
+    /// One panel body per tab, in order: static HTML, or empty for a script
+    /// to fill.
+    pub panels: &'a [String],
+    /// JSON text for the script to read from `#d`. Must already have passed
+    /// through [`script_json`].
+    pub data: Option<&'a str>,
+    /// The application's script, run after the shell's.
+    pub script: Option<&'a str>,
+    /// When the page was written. Escaped.
+    pub stamp: &'a str,
+}
+
+/// `json` made safe to sit in a `<script>`: every `<` becomes `\u003c`, which
+/// JSON reads back as the same character, so no `</script>` or `<!--` inside a
+/// string can end or confuse the element.
+pub fn script_json(json: &str) -> String {
+    json.replace('<', "\\u003c")
+}
+
+/// A page whose tabs a script switches. The bar is `nav.tabs.icons` when
+/// every tab has an icon and `nav.tabs.wrap` otherwise; the panels follow it,
+/// every one but `open` hidden. The data block precedes both scripts so they
+/// find it at load.
+pub fn app_page(app: &App) -> String {
+    let icons = !app.tabs.is_empty() && app.tabs.iter().all(|t| t.icon.is_some());
+    let buttons: String = app
+        .tabs
+        .iter()
+        .enumerate()
+        .map(|(i, tab)| {
+            let svg = tab
+                .icon
+                .map(|inner| format!("<svg viewBox=\"0 0 24 24\">{inner}</svg>"))
+                .unwrap_or_default();
+            let label = escape(&tab.label);
+            let short = tab.short.as_deref().map_or_else(|| label.clone(), escape);
+            format!(
+                "<button role=\"tab\" data-t=\"{}\" aria-selected=\"{}\">{svg}\
+                 <span class=\"s\">{short}</span><span class=\"l\">{label}</span></button>",
+                tab.id,
+                i == app.open
+            )
+        })
+        .collect();
+    let panels: String = app
+        .tabs
+        .iter()
+        .zip(app.panels)
+        .enumerate()
+        .map(|(i, (tab, body))| {
+            let hidden = if i == app.open { "" } else { " hidden" };
+            format!(
+                "<section id=\"{}-panel\" role=\"tabpanel\"{hidden}>{body}</section>",
+                tab.id
+            )
+        })
+        .collect();
+    let data = app
+        .data
+        .map(|d| format!("<script type=\"application/json\" id=\"d\">{d}</script>"))
+        .unwrap_or_default();
+    let script = app
+        .script
+        .map(|s| format!("<script>{s}</script>"))
+        .unwrap_or_default();
+    format!(
+        "<!DOCTYPE html>\n<html lang=\"en\"><head>\
+         <meta charset=\"utf-8\">\
+         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\
+         <title>{}</title>{}<style>{SHELL_CSS}{}</style></head><body>\
+         <nav class=\"tabs {}\" role=\"tablist\">{buttons}</nav>\
+         <main>{panels}</main>\
+         <footer><p class=\"stamp\">{}</p></footer>\
+         {data}<script>{SHELL_JS}</script>{script}\
+         </body></html>",
+        escape(app.title),
+        app.favicon.map(icon_link).unwrap_or_default(),
+        app.style,
+        if icons { "icons" } else { "wrap" },
+        escape(app.stamp),
+    )
+}
+
 /// `glyph` as a favicon, inlined so the page still fetches nothing: an SVG
 /// that draws the glyph as text, so an emoji is drawn in the reader's own
 /// emoji font. Base64 rather than percent-encoded, because an SVG used as an
@@ -202,5 +342,108 @@ mod tests {
             "{with}"
         );
         assert!(!page("T", None, "", "", "").contains("<link"));
+    }
+
+    fn nav_tabs(icons: bool) -> Vec<NavTab> {
+        let tab = |id: &str, label: &str| {
+            let t = NavTab::new(id, label);
+            if icons {
+                t.icon("<path d=\"M0 0\"/>")
+            } else {
+                t
+            }
+        };
+        vec![tab("a", "First"), tab("b", "Second"), tab("c", "Third")]
+    }
+
+    fn app<'a>(tabs: &'a [NavTab], panels: &'a [String], open: usize) -> App<'a> {
+        App {
+            title: "Report",
+            favicon: Some("\u{1F4B0}"),
+            style: "p{margin:0}",
+            tabs,
+            open,
+            panels,
+            data: Some("{\"k\":1}"),
+            script: Some("window.appRan=1"),
+            stamp: "Written today",
+        }
+    }
+
+    fn panels() -> Vec<String> {
+        vec!["<p>one</p>".into(), "<p>two</p>".into(), String::new()]
+    }
+
+    #[test]
+    fn script_json_escapes_every_angle_bracket() {
+        let out = script_json(r#"{"a":"</script><!--"}"#);
+        assert!(!out.contains('<'), "{out}");
+        assert!(out.contains("\\u003c/script>"), "{out}");
+    }
+
+    #[test]
+    fn app_page_hides_every_panel_but_the_open_one() {
+        let tabs = nav_tabs(true);
+        let page = app_page(&app(&tabs, &panels(), 1));
+        let hidden = page
+            .split("<section")
+            .skip(1)
+            .filter(|s| s.split('>').next().unwrap().contains(" hidden"))
+            .count();
+        assert_eq!(hidden, 2, "{page}");
+        let open = page.split("id=\"b-panel\"").nth(1).unwrap();
+        assert!(
+            !open.split('>').next().unwrap().contains("hidden"),
+            "{page}"
+        );
+    }
+
+    #[test]
+    fn a_tab_list_with_icons_draws_the_icon_bar_and_one_without_draws_the_wrapping_row() {
+        let (with, without) = (nav_tabs(true), nav_tabs(false));
+        let p = panels();
+        assert!(app_page(&app(&with, &p, 0)).contains("class=\"tabs icons\""));
+        assert!(app_page(&app(&without, &p, 0)).contains("class=\"tabs wrap\""));
+        let mixed = vec![
+            NavTab::new("a", "A").icon("<path/>"),
+            NavTab::new("b", "B"),
+            NavTab::new("c", "C"),
+        ];
+        assert!(app_page(&app(&mixed, &p, 0)).contains("class=\"tabs wrap\""));
+    }
+
+    #[test]
+    fn a_tab_shows_its_short_label_on_the_bar_and_its_full_one_above_the_breakpoint() {
+        let tabs = vec![NavTab::new("a", "Overview").short("Over")];
+        let p = vec![String::new()];
+        let page = app_page(&app(&tabs, &p, 0));
+        assert!(
+            page.contains("<span class=\"s\">Over</span><span class=\"l\">Overview</span>"),
+            "{page}"
+        );
+    }
+
+    #[test]
+    fn app_page_embeds_data_and_scripts_in_order() {
+        let tabs = nav_tabs(true);
+        let page = app_page(&app(&tabs, &panels(), 0));
+        let data = page
+            .find("<script type=\"application/json\" id=\"d\">")
+            .unwrap();
+        let shell = page.find(SHELL_JS.trim()).unwrap();
+        let app_js = page.find("window.appRan=1").unwrap();
+        assert!(data < shell && shell < app_js, "{page}");
+    }
+
+    #[test]
+    fn app_page_makes_no_external_request() {
+        let tabs = nav_tabs(true);
+        let page = app_page(&app(&tabs, &panels(), 0));
+        assert!(!page.contains("http"), "the page reaches out of itself");
+    }
+
+    #[test]
+    fn the_shell_sets_no_table_metrics() {
+        assert!(!SHELL_CSS.contains("table"));
     }
 }

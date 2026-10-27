@@ -11,11 +11,12 @@ use std::path::{Path, PathBuf};
 
 /// The page as it goes to the disk. Callers render readable HTML, which their
 /// own tests assert against, and this is the one place between it and the disk.
-/// `minify_css` because the whole layout is one inline `<style>`; no JS
-/// minifier because the page carries no script.
+/// `minify_css` because the whole layout is one inline `<style>`; `minify_js`
+/// because a script-capable page carries the shell's and the application's.
 pub fn minify(page: &str) -> Vec<u8> {
     let cfg = Cfg {
         minify_css: true,
+        minify_js: true,
         ..Cfg::new()
     };
     minify_html::minify(page.as_bytes(), &cfg)
@@ -302,5 +303,25 @@ mod tests {
             escape(r#"a & <b> "c" 'd'"#),
             "a &amp; &lt;b&gt; &quot;c&quot; 'd'"
         );
+    }
+
+    #[test]
+    fn minified_page_keeps_its_json_and_script() {
+        let tabs = vec![html::NavTab::new("a", "A")];
+        let panels = vec![String::new()];
+        let page = html::app_page(&html::App {
+            title: "T",
+            favicon: None,
+            style: "",
+            tabs: &tabs,
+            open: 0,
+            panels: &panels,
+            data: Some(&html::script_json(r#"{"k":"v<"}"#)),
+            script: Some("document.body.dataset.ok=1"),
+            stamp: "",
+        });
+        let out = String::from_utf8(minify(&page)).unwrap();
+        assert!(out.contains("v\\u003c"), "{out}");
+        assert!(out.contains("dataset.ok"), "{out}");
     }
 }

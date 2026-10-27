@@ -42,6 +42,21 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   crates behind them to use them.
 - AWS crates take `default-features = false`; aws-sdk-s3 uses `default-https-client` (rustls 0.23), not the legacy `rustls` feature (see `Cargo.toml`).
 
+## Report invariants
+
+- Two page shells live in `report::html`. `page` and the `Tab` radios are the script-free form; `app_page`
+  is the script-capable one, and neither names any application.
+- `app_page` carries `shell.css` and `shell.js` (`include_str!`), then the application's own `style`
+  and `script`. The shell sets the colour tokens (`--bg --fg --mut --rule --soft --acc`, redefined
+  under `prefers-color-scheme: dark`) and sets no table metrics: those are each application's.
+- The tab bar has two forms, chosen by the tabs themselves: `nav.tabs.icons` when every `NavTab`
+  has an icon (a fixed bottom bar under `48rem`, a sticky top row above it), `nav.tabs.wrap`
+  otherwise (always a top row of buttons at least 44px tall that wraps, never scrolls sideways).
+- The JSON block comes before both scripts and must pass through `script_json`, which writes every
+  `<` as `\u003c` so no string can end the element.
+- `report::minify` runs with `minify_js`: the scripts are plain ES2020 with no libraries, and the
+  page makes no external request of any kind.
+
 ## Backup invariants
 
 - The IAM user each application declares may only `PutObject`, and only with `If-None-Match: *`,
