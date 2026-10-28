@@ -4,7 +4,10 @@
 use super::is_press;
 use anyhow::Result;
 use ratatui::backend::Backend;
-use ratatui::crossterm::event::{self, Event, KeyEvent};
+use ratatui::crossterm::event::{
+    self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyModifiers,
+};
+use ratatui::crossterm::execute;
 use ratatui::{Frame, Terminal};
 use std::time::Duration;
 
@@ -29,6 +32,18 @@ pub trait App {
     /// Answer a key press. Releases never arrive here.
     fn on_key(&mut self, key: KeyEvent);
 
+    /// Answer a paste. Bracketed paste is on, so a pasted line arrives here
+    /// whole rather than as one key press per character, where a line break
+    /// inside it would press `Enter`. The default types it through `on_key`
+    /// as [`paste_keys`] cleans it, which is what a paste did before the mode
+    /// was on, less the `Enter`; an application that can tell whether a caret
+    /// is on screen overrides it to drop a paste where there is none.
+    fn on_paste(&mut self, text: String) {
+        for key in paste_keys(&text) {
+            self.on_key(key);
+        }
+    }
+
     /// Run work a key deferred until the status line announcing it had been
     /// drawn, and say whether there was any. The loop calls it after every
     /// frame, so blocking work is announced before the screen stops
@@ -38,33 +53,60 @@ pub trait App {
     }
 }
 
+/// A paste as the bare key presses that type it: trimmed, since a copied
+/// cell carries whitespace around its figure, and with every control
+/// character dropped, since every field is one line and a line break would
+/// press the `Enter` that saves it.
+pub fn paste_keys(text: &str) -> impl Iterator<Item = KeyEvent> + '_ {
+    text.trim()
+        .chars()
+        .filter(|c| !c.is_control())
+        .map(|c| KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE))
+}
+
 /// Run `app` until it quits, then hand it back, so the caller can take its
 /// database for the work that happens after a quit.
 ///
 /// `try_init` enables raw mode, enters the alternate screen, and installs a
 /// panic hook that restores the terminal before unwinding. The terminal is
-/// restored on an error too, before the error is returned.
+/// restored on an error too, before the error is returned. Bracketed paste is
+/// enabled beside it and disabled on every way out, a panic included: a shell
+/// with no bracketed paste of its own never turns it off, and would read every
+/// later paste wrapped in the terminal's markers.
 pub fn run<A: App>(mut app: A) -> Result<A> {
     let mut terminal = ratatui::try_init()?;
-    let result = event_loop(&mut terminal, &mut app, || {
-        Ok(if event::poll(TICK)? {
-            Some(event::read()?)
-        } else {
-            None
-        })
-    });
+    let restore = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = execute!(std::io::stdout(), DisableBracketedPaste);
+        restore(info);
+    }));
+    let result = execute!(std::io::stdout(), EnableBracketedPaste)
+        .map_err(anyhow::Error::from)
+        .and_then(|()| {
+            event_loop(&mut terminal, &mut app, || {
+                Ok(if event::poll(TICK)? {
+                    Some(event::read()?)
+                } else {
+                    None
+                })
+            })
+        });
+    let disabled = execute!(std::io::stdout(), DisableBracketedPaste);
     ratatui::try_restore()?;
     result?;
+    disabled?;
     Ok(app)
 }
 
 /// Whether an event leaves the screen owing a redraw: a key press always
 /// does, whether or not anything is bound to it, since a press clears the
-/// status line; a resize does, since every layout is computed per frame.
+/// status line; a paste does, since it is answered by an application's own
+/// handler and may change anything a key could; a resize does, since every
+/// layout is computed per frame.
 fn redraws(event: &Event) -> bool {
     match event {
         Event::Key(key) => is_press(key),
-        Event::Resize(..) => true,
+        Event::Paste(_) | Event::Resize(..) => true,
         _ => false,
     }
 }
@@ -101,10 +143,10 @@ where
             continue;
         };
         dirty |= redraws(&event);
-        if let Event::Key(key) = event
-            && is_press(&key)
-        {
-            app.on_key(key);
+        match event {
+            Event::Key(key) if is_press(&key) => app.on_key(key),
+            Event::Paste(text) => app.on_paste(text),
+            _ => {}
         }
     }
     Ok(())
@@ -114,7 +156,7 @@ where
 mod tests {
     use super::*;
     use ratatui::backend::TestBackend;
-    use ratatui::crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
+    use ratatui::crossterm::event::KeyEventKind;
     use std::collections::VecDeque;
 
     /// Records what the loop did, in order. `q` quits; `d` defers one piece
@@ -146,6 +188,10 @@ mod tests {
                 self.quit |= c == 'q';
                 self.deferred |= c == 'd';
             }
+        }
+
+        fn on_paste(&mut self, text: String) {
+            self.calls.push(format!("paste {text}"));
         }
 
         fn run_deferred(&mut self) -> bool {
@@ -182,9 +228,10 @@ mod tests {
     }
 
     /// A key press owes a frame whatever it means, since `on_key` clears the
-    /// status line; nothing but a press and a resize changes the screen.
+    /// status line, and a paste may change anything a key could; nothing but
+    /// those and a resize changes the screen.
     #[test]
-    fn only_a_key_press_and_a_resize_owe_a_frame() {
+    fn only_a_key_press_a_paste_and_a_resize_owe_a_frame() {
         use ratatui::crossterm::event::{KeyEventState, MouseEvent, MouseEventKind};
 
         let key = |kind| {
@@ -197,12 +244,12 @@ mod tests {
         };
         assert!(redraws(&key(KeyEventKind::Press)));
         assert!(redraws(&Event::Resize(80, 24)));
+        assert!(redraws(&Event::Paste("pasted".to_string())));
 
         assert!(!redraws(&key(KeyEventKind::Release)));
         assert!(!redraws(&key(KeyEventKind::Repeat)));
         assert!(!redraws(&Event::FocusGained));
         assert!(!redraws(&Event::FocusLost));
-        assert!(!redraws(&Event::Paste("pasted".to_string())));
         assert!(!redraws(&Event::Mouse(MouseEvent {
             kind: MouseEventKind::Moved,
             column: 0,
@@ -226,6 +273,50 @@ mod tests {
     fn a_key_release_reaches_no_handler_and_draws_nothing() {
         let calls = run_script(Script::default(), vec![release('a'), press('b')]);
         assert_eq!(calls, ["draw", "key b", "draw", "key q"]);
+    }
+
+    /// Whole, line breaks and all: the loop has no opinion about what a
+    /// paste may contain, and splitting it into keys is what it exists to
+    /// prevent.
+    #[test]
+    fn a_paste_reaches_its_handler_whole_and_redraws() {
+        let calls = run_script(
+            Script::default(),
+            vec![Some(Event::Paste("\n$1.00".to_string()))],
+        );
+        assert_eq!(calls, ["draw", "paste \n$1.00", "draw", "key q"]);
+    }
+
+    /// An application with no handler of its own still has its paste typed,
+    /// minus the line breaks that would have pressed `Enter`.
+    #[test]
+    fn the_default_paste_types_its_trimmed_characters_as_keys() {
+        struct Keys(Vec<KeyEvent>);
+        impl App for Keys {
+            fn should_quit(&self) -> bool {
+                false
+            }
+            fn expire_status(&mut self) -> bool {
+                false
+            }
+            fn render(&mut self, _frame: &mut Frame) {}
+            fn on_key(&mut self, key: KeyEvent) {
+                self.0.push(key);
+            }
+        }
+
+        let mut app = Keys(vec![]);
+        app.on_paste(" \n$1.0\t0\r\n".to_string());
+
+        let typed: String = app
+            .0
+            .iter()
+            .map(|k| match k.code {
+                KeyCode::Char(c) if k.modifiers == KeyModifiers::NONE => c,
+                _ => panic!("not a bare character: {k:?}"),
+            })
+            .collect();
+        assert_eq!(typed, "$1.00");
     }
 
     #[test]
