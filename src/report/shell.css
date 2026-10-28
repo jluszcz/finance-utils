@@ -1,0 +1,28 @@
+:root{color-scheme:light dark;--bg:#fff;--fg:#1c1c1e;--mut:#6b6b70;--rule:#d8d8dc;--soft:#f2f2f5;--acc:#0a5fd0}
+@media (prefers-color-scheme:dark){:root{--bg:#121214;--fg:#ececf0;--mut:#9a9aa3;--rule:#303036;--soft:#1d1d21;--acc:#6aa8ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+main{padding:12px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+[hidden]{display:none!important}
+footer{padding:0 max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+.stamp{margin:0;color:var(--mut);font-size:.8125rem}
+nav.tabs{display:flex;background:var(--bg);border-bottom:1px solid var(--rule);padding:0 max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left))}
+nav.tabs button{font:inherit;color:var(--mut);background:none;border:0;border-bottom:3px solid transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 14px;-webkit-tap-highlight-color:transparent}
+nav.tabs button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--acc)}
+nav.tabs button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs .s{display:none}
+nav.wrap{position:sticky;top:0;z-index:2;flex-wrap:wrap}
+nav.wrap button{min-height:44px}
+nav.icons{position:sticky;top:0;z-index:2}
+nav.icons button{min-height:48px}
+nav.icons svg{display:none}
+@media (max-width:47.999rem){
+nav.icons{position:fixed;left:0;right:0;bottom:0;top:auto;border-bottom:0;border-top:1px solid var(--rule);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+nav.icons button{flex:1 1 0;min-width:0;min-height:62px;flex-direction:column;gap:2px;padding:6px 2px;border-bottom:0;border-top:3px solid transparent;font-size:.6875rem}
+nav.icons button[aria-selected=true]{border-top-color:var(--acc)}
+nav.icons svg{display:block}
+nav.icons .s{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav.icons .l{display:none}
+body:has(nav.icons) footer{padding-bottom:calc(62px + env(safe-area-inset-bottom) + 24px)}
+}
