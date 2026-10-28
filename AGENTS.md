@@ -44,8 +44,7 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 
 ## Report invariants
 
-- Two page shells live in `report::html`. `page` and the `Tab` radios are the script-free form; `app_page`
-  is the script-capable one, and neither names any application.
+- The page shell is `report::html::app_page`, and it names no application.
 - `app_page` carries `shell.css` and `shell.js` (`include_str!`), then the application's own `style`
   and `script`. The shell sets the colour tokens (`--bg --fg --mut --rule --soft --acc`, redefined
   under `prefers-color-scheme: dark`) and sets no table metrics: those are each application's.
