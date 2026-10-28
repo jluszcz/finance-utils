@@ -83,12 +83,10 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
   `Disabled` with no section, `Skipped` when the caller says `skip`, `Unchanged` when the page was
   written today and no rows were, else `Written`. `render` runs only when a page will be written.
 - `escape(text) -> String`: `&`, `<`, `>`, `"`.
-- `html`: the page around the figures and a tab bar switched by CSS alone, so the page carries no
-  script. `Tab::new(id, label)`; `tab_inputs(tabs, open)` are the radios, which go ahead of the nav
-  and every panel; `tab_nav(tabs)` is the bar; `tab_rules(tabs)` is the CSS showing the open
-  panel (`<id>-panel`), lighting its label and placing the focus ring; `page(title, icon, style,
-  body, stamp)` is the document, with the footer stamp and, given an `icon` glyph, an inline
-  favicon.
+- `html`: the page and its tab bar, switched by a script. `NavTab::new(id, label)` with optional
+  `short` and `icon`; `app_page(&App)` is the document (title, favicon glyph, style, tabs, open tab,
+  one panel body per tab, JSON data, script, footer stamp); `script_json(json)` makes JSON safe to
+  sit in a `<script>`.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.
 - `cli::ReportArgs` (`--dir`), flattened into an application's `report` subcommand;
   `cli::dir(args, scratch_dir, cfg, config_path)` picks `--dir`, then a scratch run's directory,
