@@ -180,10 +180,13 @@ otherwise `CommonArgs`'s doc comment becomes the `--help` description.
 - `step_index(index, len, step)` steps through `len` choices, wrapping, and stays at zero for an
   empty list; `next_in(order, focus, step)` is the same around a form's tab order over its field
   enum, counting from the first when `focus` is not in `order`, and panicking on an empty `order`.
-- `app::{App, run}`: `run` owns the terminal and the loop that draws and reads keys, and hands
-  the `App` back on quit. It draws only when a key press, a resize, an expired status message
-  (`expire_status`) or deferred work (`run_deferred`, which defaults to none) changed something,
-  and checks for expiry every quarter second.
+- `app::{App, run, paste_keys}`: `run` owns the terminal and the loop that draws and reads keys,
+  and hands the `App` back on quit. It draws only when a key press, a paste, a resize, an expired
+  status message (`expire_status`) or deferred work (`run_deferred`, which defaults to none)
+  changed something, and checks for expiry every quarter second. Bracketed paste is on while it
+  runs, so a paste reaches `on_paste` whole; the default types it through `on_key` as
+  `paste_keys` cleans it -- trimmed, control characters dropped -- so a line break in a paste
+  never presses `Enter`.
 - `status::StatusLine`: the footer's message, error or not. With no modal open it lasts until the
   next key or `status::TTL` (four seconds); under a modal, until the modal closes. The application
   brackets each key with `begin_key`/`end_key` and passes whether a modal is open.
