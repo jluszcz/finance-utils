@@ -7,18 +7,16 @@ use super::escape;
 /// tab-bar forms, with no table metrics, which are each application's.
 const SHELL_CSS: &str = include_str!("shell.css");
 
-/// The shell's own script: switching panels on a tab click. Plain ES2020.
+/// The shell's own script: switching panels on a tab click, and opening and
+/// closing the narrow page's tab menu. Plain ES2020.
 const SHELL_JS: &str = include_str!("shell.js");
 
 /// One tab of a script-capable page.
 pub struct NavTab {
     /// Names the tab's `data-t` and its panel, `<id>-panel`.
     pub id: String,
-    /// What the bar shows above the breakpoint. Escaped on the way out.
+    /// What the bar and the menu show. Escaped on the way out.
     pub label: String,
-    /// What the bottom bar shows under its icon, when `label` is too long for
-    /// it. Escaped on the way out.
-    pub short: Option<String>,
     /// The inside of a 24x24 `<svg>`, stroked in the text color. The caller's
     /// own markup. A bar draws the icon form only when every tab has one.
     pub icon: Option<&'static str>,
@@ -30,15 +28,8 @@ impl NavTab {
         NavTab {
             id: id.into(),
             label: label.into(),
-            short: None,
             icon: None,
         }
-    }
-
-    /// The label the narrow bar uses instead of `label`.
-    pub fn short(mut self, short: impl Into<String>) -> NavTab {
-        self.short = Some(short.into());
-        self
     }
 
     /// The icon, as the inside of its `<svg>`.
@@ -79,10 +70,14 @@ pub fn script_json(json: &str) -> String {
     json.replace('<', "\\u003c")
 }
 
+/// The menu toggle's icon: three bars, stroked like a tab's.
+const MENU_ICON: &str = "<path d=\"M4 7h16M4 12h16M4 17h16\"/>";
+
 /// A page whose tabs a script switches. The bar is `nav.tabs.icons` when
 /// every tab has an icon and `nav.tabs.wrap` otherwise; the panels follow it,
-/// every one but `open` hidden. The data block precedes both scripts so they
-/// find it at load.
+/// every one but `open` hidden. The icon bar leads with a menu toggle naming
+/// the open tab, which the narrow page shows in place of the row. The data
+/// block precedes both scripts so they find it at load.
 pub fn app_page(app: &App) -> String {
     let icons = !app.tabs.is_empty() && app.tabs.iter().all(|t| t.icon.is_some());
     let buttons: String = app
@@ -94,16 +89,29 @@ pub fn app_page(app: &App) -> String {
                 .icon
                 .map(|inner| format!("<svg viewBox=\"0 0 24 24\">{inner}</svg>"))
                 .unwrap_or_default();
-            let label = escape(&tab.label);
-            let short = tab.short.as_deref().map_or_else(|| label.clone(), escape);
             format!(
                 "<button role=\"tab\" data-t=\"{}\" aria-selected=\"{}\">{svg}\
-                 <span class=\"s\">{short}</span><span class=\"l\">{label}</span></button>",
+                 <span class=\"l\">{}</span></button>",
                 tab.id,
-                i == app.open
+                i == app.open,
+                escape(&tab.label)
             )
         })
         .collect();
+    let nav = if icons {
+        let open = app
+            .tabs
+            .get(app.open)
+            .map_or_else(String::new, |t| escape(&t.label));
+        format!(
+            "<nav class=\"tabs icons\">\
+             <button class=\"menu\" aria-expanded=\"false\">\
+             <svg viewBox=\"0 0 24 24\">{MENU_ICON}</svg><span class=\"cur\">{open}</span></button>\
+             <div class=\"list\" role=\"tablist\">{buttons}</div></nav>"
+        )
+    } else {
+        format!("<nav class=\"tabs wrap\" role=\"tablist\">{buttons}</nav>")
+    };
     let panels: String = app
         .tabs
         .iter()
@@ -130,15 +138,13 @@ pub fn app_page(app: &App) -> String {
          <meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\
          <title>{}</title>{}<style>{SHELL_CSS}{}</style></head><body>\
-         <nav class=\"tabs {}\" role=\"tablist\">{buttons}</nav>\
-         <main>{panels}</main>\
+         {nav}<main>{panels}</main>\
          <footer><p class=\"stamp\">{}</p></footer>\
          {data}<script>{SHELL_JS}</script>{script}\
          </body></html>",
         escape(app.title),
         app.favicon.map(icon_link).unwrap_or_default(),
         app.style,
-        if icons { "icons" } else { "wrap" },
         escape(app.stamp),
     )
 }
@@ -287,7 +293,7 @@ mod tests {
         let (with, without) = (nav_tabs(true), nav_tabs(false));
         let p = panels();
         assert!(app_page(&app(&with, &p, 0)).contains("class=\"tabs icons\""));
-        assert!(app_page(&app(&without, &p, 0)).contains("class=\"tabs wrap\""));
+        assert!(app_page(&app(&without, &p, 0)).contains("class=\"tabs wrap\" role=\"tablist\""));
         let mixed = vec![
             NavTab::new("a", "A").icon("<path/>"),
             NavTab::new("b", "B"),
@@ -297,14 +303,18 @@ mod tests {
     }
 
     #[test]
-    fn a_tab_shows_its_short_label_on_the_bar_and_its_full_one_above_the_breakpoint() {
-        let tabs = vec![NavTab::new("a", "Overview").short("Over")];
-        let p = vec![String::new()];
-        let page = app_page(&app(&tabs, &p, 0));
+    fn the_icon_bar_leads_with_a_menu_naming_the_open_tab_and_the_wrapping_row_has_none() {
+        let (with, without) = (nav_tabs(true), nav_tabs(false));
+        let p = panels();
+        let page = app_page(&app(&with, &p, 1));
+        let menu = page.find("class=\"menu\"").unwrap();
+        let list = page.find("<div class=\"list\" role=\"tablist\">").unwrap();
+        assert!(menu < list, "{page}");
         assert!(
-            page.contains("<span class=\"s\">Over</span><span class=\"l\">Overview</span>"),
+            page[menu..list].contains("<span class=\"cur\">Second</span>"),
             "{page}"
         );
+        assert!(!app_page(&app(&without, &p, 1)).contains("class=\"menu\""));
     }
 
     #[test]

@@ -49,7 +49,9 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   and `script`. The shell sets the colour tokens (`--bg --fg --mut --rule --soft --acc`, redefined
   under `prefers-color-scheme: dark`) and sets no table metrics: those are each application's.
 - The tab bar has two forms, chosen by the tabs themselves: `nav.tabs.icons` when every `NavTab`
-  has an icon (a fixed bottom bar under `48rem`, a sticky top row above it), `nav.tabs.wrap`
+  has an icon (under `48rem` a sticky top menu toggle naming the open tab, whose list of tabs
+  overlays the page, kept off the bottom edge where a viewer's own toolbar answers taps; a sticky
+  top row above it), `nav.tabs.wrap`
   otherwise (always a top row of buttons at least 44px tall that wraps, never scrolls sideways).
 - The JSON block comes before both scripts and must pass through `script_json`, which writes every
   `<` as `\u003c` so no string can end the element.
