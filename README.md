@@ -83,8 +83,8 @@ Writes an HTML page to a synced directory: minified, atomically, and only when i
   `Disabled` with no section, `Skipped` when the caller says `skip`, `Unchanged` when the page was
   written today and no rows were, else `Written`. `render` runs only when a page will be written.
 - `escape(text) -> String`: `&`, `<`, `>`, `"`.
-- `html`: the page and its tab bar, switched by a script. `NavTab::new(id, label)` with optional
-  `short` and `icon`; `app_page(&App)` is the document (title, favicon glyph, style, tabs, open tab,
+- `html`: the page and its tab bar, switched by a script. `NavTab::new(id, label)` with an optional
+  `icon`; `app_page(&App)` is the document (title, favicon glyph, style, tabs, open tab,
   one panel body per tab, JSON data, script, footer stamp); `script_json(json)` makes JSON safe to
   sit in a `<script>`.
 - `Written { path, bytes }` and `Outcome { Disabled, Skipped, Unchanged, Written(Written) }`.

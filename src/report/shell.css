@@ -11,18 +11,20 @@ nav.tabs button{font:inherit;color:var(--mut);background:none;border:0;border-bo
 nav.tabs button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--acc)}
 nav.tabs button:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
 nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
-nav.tabs .s{display:none}
 nav.wrap{position:sticky;top:0;z-index:2;flex-wrap:wrap}
 nav.wrap button{min-height:44px}
 nav.icons{position:sticky;top:0;z-index:2}
 nav.icons button{min-height:48px}
 nav.icons svg{display:none}
+nav.icons .menu{display:none}
+nav.icons .list{display:flex;flex:1}
 @media (max-width:47.999rem){
-nav.icons{position:fixed;left:0;right:0;bottom:0;top:auto;border-bottom:0;border-top:1px solid var(--rule);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-nav.icons button{flex:1 1 0;min-width:0;min-height:62px;flex-direction:column;gap:2px;padding:6px 2px;border-bottom:0;border-top:3px solid transparent;font-size:.6875rem}
-nav.icons button[aria-selected=true]{border-top-color:var(--acc)}
-nav.icons svg{display:block}
-nav.icons .s{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-nav.icons .l{display:none}
-body:has(nav.icons) footer{padding-bottom:calc(62px + env(safe-area-inset-bottom) + 24px)}
+nav.icons{padding-top:env(safe-area-inset-top)}
+nav.icons .menu{display:flex;flex:1;justify-content:flex-start;gap:10px;padding:0 4px;color:var(--fg);border-bottom:0;font-weight:600}
+nav.icons .menu svg{display:block}
+nav.icons .list{display:none;position:absolute;top:100%;left:0;right:0;max-height:calc(100vh - 48px - env(safe-area-inset-top));max-height:calc(100dvh - 48px - env(safe-area-inset-top));overflow-y:auto;overscroll-behavior:contain;flex-direction:column;background:var(--bg);border-bottom:1px solid var(--rule);box-shadow:0 8px 16px rgba(0,0,0,.18);padding:4px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
+nav.icons.open .list{display:flex}
+nav.icons .list button{justify-content:flex-start;gap:12px;padding:0 8px;border-bottom:0;border-left:3px solid transparent}
+nav.icons .list button[aria-selected=true]{border-left-color:var(--acc)}
+nav.icons .list svg{display:block}
 }
