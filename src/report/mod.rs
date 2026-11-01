@@ -13,13 +13,57 @@ use std::path::{Path, PathBuf};
 /// own tests assert against, and this is the one place between it and the disk.
 /// `minify_css` because the whole layout is one inline `<style>`; `minify_js`
 /// because a script-capable page carries the shell's and the application's.
+///
+/// Each script's comments are stripped first: `minify-html`'s JS pass prints
+/// with oxc's default codegen options, which keep statement-level comments,
+/// so a commented script would otherwise ship its prose to every phone.
 pub fn minify(page: &str) -> Vec<u8> {
     let cfg = Cfg {
         minify_css: true,
         minify_js: true,
         ..Cfg::new()
     };
-    minify_html::minify(page.as_bytes(), &cfg)
+    minify_html::minify(strip_script_comments(page).as_bytes(), &cfg)
+}
+
+/// Every bare `<script>` -- the shell's and the application's, which
+/// `app_page` writes with no attributes -- with its comments removed. The
+/// JSON block carries a `type` and is left alone.
+fn strip_script_comments(page: &str) -> String {
+    const OPEN: &str = "<script>";
+    const CLOSE: &str = "</script>";
+    let mut out = String::with_capacity(page.len());
+    let mut rest = page;
+    while let Some(start) = rest.find(OPEN) {
+        let body = start + OPEN.len();
+        let Some(len) = rest[body..].find(CLOSE) else {
+            break;
+        };
+        out.push_str(&rest[..body]);
+        out.push_str(&uncommented(&rest[body..body + len]));
+        rest = &rest[body + len..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// `js` reprinted with no comments, or unchanged if it does not parse --
+/// `minify-html` then falls back to the source as well, so a script it
+/// cannot read reaches the page as written rather than not at all.
+fn uncommented(js: &str) -> String {
+    use oxc_codegen::{Codegen, CodegenOptions, CommentOptions};
+    let allocator = oxc_allocator::Allocator::default();
+    let parsed = oxc_parser::Parser::new(&allocator, js, oxc_span::SourceType::default()).parse();
+    if !parsed.errors.is_empty() {
+        return js.to_string();
+    }
+    Codegen::new()
+        .with_options(CodegenOptions {
+            comments: CommentOptions::disabled(),
+            ..CodegenOptions::default()
+        })
+        .build(&parsed.program)
+        .code
 }
 
 /// Escapes `&`, `<`, `>` and `"`. Safe for text content and for
@@ -323,6 +367,47 @@ mod tests {
         let out = String::from_utf8(minify(&page)).unwrap();
         assert!(out.contains("v\\u003c"), "{out}");
         assert!(out.contains("dataset.ok"), "{out}");
+    }
+
+    #[test]
+    fn minified_page_ships_no_script_comments() {
+        let tabs = vec![html::NavTab::new("a", "A")];
+        let panels = vec![String::new()];
+        let page = html::app_page(&html::App {
+            title: "T",
+            favicon: None,
+            style: "",
+            tabs: &tabs,
+            open: 0,
+            panels: &panels,
+            data: Some(&html::script_json(r#"{"k":"// kept /* kept */"}"#)),
+            script: Some(
+                "// line prose\n/* block prose */\nfunction f() {\n  // inner prose\n  \
+                 return \"// not a comment\";\n}\ndocument.body.dataset.ok = f();",
+            ),
+            stamp: "",
+        });
+        let out = String::from_utf8(minify(&page)).unwrap();
+        assert!(!out.contains("prose"), "{out}");
+        assert!(out.contains("// not a comment"), "{out}");
+        assert!(out.contains("// kept /* kept */"), "{out}");
+        assert!(out.contains("dataset.ok"), "{out}");
+    }
+
+    #[test]
+    fn a_script_that_does_not_parse_reaches_the_page_as_written() {
+        assert_eq!(uncommented("if ( // half"), "if ( // half");
+    }
+
+    // Dependabot bumps every crate in one group, so the `oxc_*` requirements
+    // can move off the release `minify-html` builds on without anything else
+    // failing.
+    #[test]
+    fn the_comment_pass_shares_minify_htmls_parser() {
+        let lock =
+            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.lock")).unwrap();
+        let copies = lock.matches("\nname = \"oxc_parser\"\n").count();
+        assert_eq!(copies, 1, "Cargo.lock builds {copies} copies of oxc_parser");
     }
 
     #[test]

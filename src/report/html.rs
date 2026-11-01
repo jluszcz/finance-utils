@@ -340,4 +340,26 @@ mod tests {
     fn the_shell_sets_no_table_metrics() {
         assert!(!SHELL_CSS.contains("table"));
     }
+
+    // A shell script oxc cannot parse reaches the page as written, comments
+    // and all, so this is what notices the strip quietly stopping.
+    #[test]
+    fn the_shells_own_comments_do_not_reach_the_minified_page() {
+        let tabs = nav_tabs(true);
+        let page = app_page(&app(&tabs, &panels(), 0));
+        let out = String::from_utf8(super::super::minify(&page)).unwrap();
+        let comments: Vec<&str> = SHELL_JS
+            .lines()
+            .filter_map(|l| l.trim().strip_prefix("//"))
+            .map(str::trim)
+            .filter(|c| !c.is_empty())
+            .collect();
+        assert!(
+            !comments.is_empty(),
+            "the shell carries no comment to strip"
+        );
+        for comment in comments {
+            assert!(!out.contains(comment), "shipped {comment:?}: {out}");
+        }
+    }
 }

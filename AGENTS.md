@@ -34,8 +34,8 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 - `rusqlite` is named only in `src/sqlite.rs`, behind the `sqlite` feature. The applications own
   their schemas and their queries; `sqlite` opens, migrates and snapshots. `backup` and `scratch`
   still take the snapshot as a closure, so neither needs the feature.
-- `minify_html` is named only in `src/report/mod.rs`; `aws_config`, `aws_sdk_s3`, `aws_smithy_types`
-  and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
+- `minify_html` and the `oxc_*` crates are named only in `src/report/mod.rs`; `aws_config`,
+  `aws_sdk_s3`, `aws_smithy_types` and `tokio` only in `src/backup/s3.rs`; `zstd` only in `src/backup/mod.rs`; `serde` and `toml`
   only in `src/config.rs` and `src/backup/state.rs`.
 - `text_enum!`, `row_id!` and `impl_scroll!` are `#[macro_export]`ed, so they sit at the crate
   root; they reach their dependencies through `$crate` paths, so an application names none of the
@@ -56,7 +56,8 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
 - The JSON block comes before both scripts and must pass through `script_json`, which writes every
   `<` as `\u003c` so no string can end the element.
 - `report::minify` runs with `minify_js`: the scripts are plain ES2020 with no libraries, and the
-  page makes no external request of any kind.
+  page makes no external request of any kind. It strips each bare `<script>`'s comments with oxc
+  before `minify-html` sees the page, because `minify-html`'s own JS pass keeps them.
 
 ## Backup invariants
 
