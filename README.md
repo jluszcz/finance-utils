@@ -18,7 +18,7 @@ jluszcz_finance_utils = { git = "https://github.com/jluszcz/finance-utils", feat
 | *(always)* | `human_bytes`, `text_enum!` | `anyhow` |
 | `money` | `money::{Cents, ParseMoneyError, dollar_sign}` | `thiserror` |
 | `config` | `config::{default_path, state_path, data_path, load, ReportConfig, BackupConfig}` | `serde`, `toml` |
-| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, html, cli}` | `config`, `chrono`, `clap`, `minify-html` |
+| `report` | `report::{write, write_if_enabled, minify, escape, is_due, Written, Outcome, html, cli}` | `config`, `chrono`, `clap`, `minify-html`, `oxc_allocator`, `oxc_codegen`, `oxc_parser`, `oxc_span` |
 | `backup` | `backup::{Spec, run_if_due, is_due, next_due, Outcome, state, s3, cli}` | `config`, `chrono`, `clap`, `aws-config`, `aws-sdk-s3`, `aws-smithy-types`, `tokio`, `zstd` |
 | `scratch` | `scratch::copy` | `chrono` |
 | `cli` | `cli::{CommonArgs, name_defaults, parse}` | `config`, `scratch`, `chrono`, `clap` |
@@ -74,7 +74,7 @@ is ignored, and `dir` and `bucket` have no default so that a typo is an error.
 
 Writes an HTML page to a synced directory: minified, atomically, and only when it is due.
 
-- `minify(page) -> Vec<u8>`: `minify-html` with CSS minified and no JavaScript minifier.
+- `minify(page) -> Vec<u8>`: `minify-html` with CSS and JavaScript minified, each script's comments stripped first.
 - `write(dir, file_name, page) -> Result<Written>`: creates `dir`, writes a temporary file beside
   the page with the existing page's permissions, and renames it onto `file_name`. The temporary
   file is removed on every error path.
