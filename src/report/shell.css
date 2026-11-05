@@ -14,6 +14,9 @@ nav.tabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1
 nav.wrap{position:sticky;top:0;z-index:2;flex-wrap:wrap}
 nav.wrap button{min-height:44px}
 nav.icons{position:sticky;top:0;z-index:2}
+/* A viewer that draws the page under its status bar (iOS Safari) scrolls
+   content into the strip above a sticky bar; the bar paints that strip. */
+nav.tabs::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:100vh;background:var(--bg);pointer-events:none}
 nav.icons button{min-height:48px}
 nav.icons svg{display:none}
 nav.icons .menu{display:none}
