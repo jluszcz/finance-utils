@@ -53,6 +53,8 @@ source, tests, docs, commit messages, or PR text. Every money literal is invente
   overlays the page, kept off the bottom edge where a viewer's own toolbar answers taps; a sticky
   top row above it), `nav.tabs.wrap`
   otherwise (always a top row of buttons at least 44px tall that wraps, never scrolls sideways).
+  Both are sticky and both paint the strip above themselves, which a viewer drawing the page under
+  its status bar (iOS Safari) would otherwise show scrolled content through.
 - The JSON block comes before both scripts and must pass through `script_json`, which writes every
   `<` as `\u003c` so no string can end the element.
 - `report::minify` runs with `minify_js`: the scripts are plain ES2020 with no libraries, and the
